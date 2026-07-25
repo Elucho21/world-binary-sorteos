@@ -54,14 +54,42 @@ Abrí [http://localhost:3000](http://localhost:3000).
 
 ### 3. Deploy a Netlify
 
-1. Conectá el repo a Netlify (Netlify detecta Next.js automáticamente vía
-   su Next.js Runtime, no hace falta config extra).
+Ya está deployado y funcionando en **https://sorteos-world-binary.netlify.app**
+(repo: [github.com/Elucho21/world-binary-sorteos](https://github.com/Elucho21/world-binary-sorteos),
+conectado con auto-deploy en cada push a `master`).
+
+Si alguna vez hay que rearmar esto desde cero en otro sitio Netlify, dos
+cosas no obvias que costó bastante encontrar:
+
+- **`netlify.toml` tiene que declarar `publish = ".next"` explícitamente**
+  y el plugin a mano:
+  ```toml
+  [build]
+    command = "npm run build"
+    publish = ".next"
+
+  [[plugins]]
+    package = "@netlify/plugin-nextjs"
+  ```
+  Sin esto, Netlify puede quedar publicando solo los archivos estáticos
+  (0 functions, 0 edge functions) sin ningún error visible, o directamente
+  fallar con "Your publish directory cannot be the same as the base
+  directory". El "zero-config" de Netlify para Next.js no siempre alcanza
+  cuando el sitio se linkea por API en vez del wizard de la UI.
+- **No buildear el paso de Edge Functions en Windows.** `netlify deploy
+  --build` corrido en una máquina Windows falla siempre al empaquetar
+  `proxy.ts` como Edge Function (bug de rutas del bundler, no depende de
+  Turbopack/webpack). La solución es dejar que Netlify buildee en sus
+  propios servidores (Linux) vía Git — nunca buildear localmente en Windows
+  y subir ese resultado.
+
+Para un proyecto nuevo desde cero:
+1. Conectá el repo a Netlify desde la UI (Site settings → Build & deploy →
+   Link repository) — el wizard configura bien el publish dir solo.
 2. Cargá las mismas variables de entorno de `.env.local` en
    **Site settings → Environment variables** (usá un proyecto Supabase de
    producción separado del de desarrollo).
-3. Poné `NEXT_PUBLIC_SITE_URL` con la URL real de Netlify — se usa para
-   armar los links de los sorteos (`/s/[slug]`) y el magic link de
-   "Mis Premios".
+3. Poné `NEXT_PUBLIC_SITE_URL` con la URL real de Netlify.
 4. Corré la migración `0001_init.sql` contra el proyecto de producción.
 
 ## Banners / imágenes publicitarias
