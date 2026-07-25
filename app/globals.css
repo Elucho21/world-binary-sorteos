@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
+/*
+ * World Binary brand tokens. Background/text/primary sampled directly from
+ * https://worldbinary.pro/ (near-black bg, off-white text, green accent);
+ * --brand-accent (gold) is our own addition for "you won a prize" moments,
+ * kept deliberately distinct from the brand's own green so wins pop. If
+ * World Binary supplies an official brand kit later, only these values
+ * should need to change.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-bg: #191919;
+  --brand-surface: #232323;
+  --brand-surface-raised: #2b2b2b;
+  --brand-border: #363636;
+  --brand-text: #f7f7f7;
+  --brand-muted: #a3a3a3;
+  --brand-primary: #2aa76d;
+  --brand-primary-hover: #34c082;
+  --brand-primary-foreground: #ffffff;
+  --brand-accent: #f5b400;
+  --brand-accent-foreground: #1a1400;
+  --brand-danger: #ef4444;
+  --brand-success: #2aa76d;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-surface-raised: var(--brand-surface-raised);
+  --color-brand-border: var(--brand-border);
+  --color-brand-text: var(--brand-text);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-hover: var(--brand-primary-hover);
+  --color-brand-primary-foreground: var(--brand-primary-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-brand-danger: var(--brand-danger);
+  --color-brand-success: var(--brand-success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--brand-bg);
+  color: var(--brand-text);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+::selection {
+  background: var(--brand-primary);
+  color: var(--brand-primary-foreground);
 }
