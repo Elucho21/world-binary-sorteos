@@ -55,8 +55,22 @@ Abrí [http://localhost:3000](http://localhost:3000).
 ### 3. Deploy a Netlify
 
 Ya está deployado y funcionando en **https://sorteos-world-binary.netlify.app**
-(repo: [github.com/Elucho21/world-binary-sorteos](https://github.com/Elucho21/world-binary-sorteos),
-conectado con auto-deploy en cada push a `master`).
+(repo: [github.com/Elucho21/world-binary-sorteos](https://github.com/Elucho21/world-binary-sorteos)).
+
+**Importante:** el repo se conectó a mano vía API (no por el wizard normal
+de Netlify), así que el auto-deploy en cada push todavía no dispara solo.
+Después de cada `git push`, hay que disparar el build manualmente con uno
+de estos dos:
+
+```bash
+netlify deploy --prod --trigger
+```
+
+o desde el dashboard: **Deploys → Trigger deploy → Deploy site**. Si en
+algún momento se quiere el auto-deploy real, la forma más simple es
+desvincular y re-vincular el repo desde la propia UI de Netlify (Site
+settings → Build & deploy → Link a different repository), que sí configura
+bien el webhook.
 
 Si alguna vez hay que rearmar esto desde cero en otro sitio Netlify, dos
 cosas no obvias que costó bastante encontrar:
