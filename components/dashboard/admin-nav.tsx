@@ -8,8 +8,11 @@ const links = [
   { href: "/admin/educators", label: "Educadores" },
   { href: "/admin/codes", label: "Cuentas bono" },
   { href: "/admin/sorteos", label: "Sorteos" },
+  { href: "/admin/stats", label: "Estadísticas" },
   { href: "/admin/leads", label: "Leads" },
   { href: "/admin/banners", label: "Banners" },
+  { href: "/admin/audit", label: "Auditoría" },
+  { href: "/admin/settings", label: "Config" },
 ];
 
 export function AdminNav() {

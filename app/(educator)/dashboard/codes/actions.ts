@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireApprovedEducator } from "@/lib/auth/dal";
+import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertCodeBatch } from "@/lib/codes";
 import { parseCodesFile } from "@/lib/csv";
@@ -18,7 +18,7 @@ export async function uploadManualCodes(_prev: FormState, formData: FormData): P
 
   const supabase = await createClient();
   const result = await insertCodeBatch(supabase, {
-    educatorId: profile.id,
+    educatorId: effectiveEducatorId(profile),
     createdBy: profile.id,
     origin: "educator",
     method: "manual",
@@ -44,7 +44,7 @@ export async function uploadFileCodes(_prev: FormState, formData: FormData): Pro
 
   const supabase = await createClient();
   const result = await insertCodeBatch(supabase, {
-    educatorId: profile.id,
+    educatorId: effectiveEducatorId(profile),
     createdBy: profile.id,
     origin: "educator",
     method: "file",
@@ -74,7 +74,7 @@ export async function assignFromPool(
   const { data: candidates, error: selectError } = await supabase
     .from("prize_codes")
     .select("id")
-    .eq("educator_id", profile.id)
+    .eq("educator_id", effectiveEducatorId(profile))
     .eq("status", "unassigned")
     .limit(quantity);
 
@@ -101,7 +101,7 @@ export async function unassignCode(sorteoId: string, prizeCodeId: string) {
     .from("prize_codes")
     .update({ segment_id: null, status: "unassigned" })
     .eq("id", prizeCodeId)
-    .eq("educator_id", profile.id)
+    .eq("educator_id", effectiveEducatorId(profile))
     .eq("status", "available");
   if (error) throw new Error(error.message);
   revalidatePath(`/dashboard/sorteos/${sorteoId}/codes`);
@@ -122,7 +122,7 @@ export async function uploadManualCodesToSegment(
 
   const supabase = await createClient();
   const result = await insertCodeBatch(supabase, {
-    educatorId: profile.id,
+    educatorId: effectiveEducatorId(profile),
     createdBy: profile.id,
     origin: "educator",
     method: "manual",

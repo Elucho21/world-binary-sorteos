@@ -1,4 +1,5 @@
 import Link from "next/link";
+import QRCode from "qrcode";
 import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -6,8 +7,10 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SorteoEditForm } from "@/components/dashboard/sorteo-edit-form";
+import { SorteoStatusButtons } from "@/components/dashboard/sorteo-status-buttons";
 import { ConfirmButton } from "@/components/dashboard/delete-button";
-import { setSorteoStatus, deleteSorteo } from "../actions";
+import { ShareCopyButton } from "@/components/dashboard/share-copy-button";
+import { deleteSorteo, cloneSorteo } from "../actions";
 import type { SorteoStatus } from "@/types/database.types";
 
 const statusLabel: Record<SorteoStatus, string> = {
@@ -31,6 +34,13 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
   ]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const publicUrl = `${siteUrl}/s/${sorteo.slug}`;
+  const qrDataUrl = await QRCode.toDataURL(publicUrl, {
+    margin: 1,
+    width: 220,
+    color: { dark: "#191919", light: "#f7f7f7" },
+  });
+  const shareText = `🎡 ¡Girá la ruleta de ${sorteo.name} y ganá una cuenta bono de World Binary! Participá acá: ${publicUrl}`;
 
   return (
     <div className="space-y-6">
@@ -67,6 +77,16 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
               Participantes ({participantCount ?? 0})
             </Button>
           </Link>
+          <Link href={`/dashboard/sorteos/${id}/stats`}>
+            <Button variant="secondary" size="sm">
+              Estadísticas
+            </Button>
+          </Link>
+          <form action={cloneSorteo.bind(null, id)}>
+            <Button type="submit" variant="secondary" size="sm">
+              Duplicar
+            </Button>
+          </form>
         </div>
       </div>
 
@@ -77,18 +97,23 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
             Solo un sorteo &quot;Activo&quot; es visible y jugable en su URL pública.
           </CardDescription>
         </CardHeader>
-        <div className="flex flex-wrap gap-2">
-          {(["draft", "active", "paused", "ended"] as SorteoStatus[]).map((status) => (
-            <form key={status} action={setSorteoStatus.bind(null, id, status)}>
-              <Button
-                type="submit"
-                size="sm"
-                variant={sorteo.status === status ? "primary" : "secondary"}
-              >
-                {statusLabel[status]}
-              </Button>
-            </form>
-          ))}
+        <SorteoStatusButtons sorteoId={id} currentStatus={sorteo.status} />
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Compartir</CardTitle>
+          <CardDescription>QR y texto listo para mandar por WhatsApp o Instagram.</CardDescription>
+        </CardHeader>
+        <div className="flex flex-col items-start gap-4 sm:flex-row">
+          {/* eslint-disable-next-line @next/next/no-img-element -- generated data: URI, not an external image */}
+          <img src={qrDataUrl} alt={`Código QR de ${publicUrl}`} width={140} height={140} className="rounded-md" />
+          <div className="flex-1 space-y-2">
+            <p className="rounded-md border border-brand-border bg-brand-bg p-3 text-sm text-brand-muted">
+              {shareText}
+            </p>
+            <ShareCopyButton text={shareText} label="Copiar mensaje" />
+          </div>
         </div>
       </Card>
 

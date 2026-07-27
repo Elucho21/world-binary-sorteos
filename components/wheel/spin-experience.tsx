@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import { Wheel, type WheelSegmentInput } from "@/components/wheel/wheel";
+import { Confetti } from "@/components/wheel/confetti";
+import { TurnstileWidget } from "@/components/wheel/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { playWinChime } from "@/lib/win-chime";
 import type { SpinWheelResult } from "@/types/database.types";
 
 type Phase = "form" | "spinning" | "result";
 
 const FULL_SPINS = 5;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export function SpinExperience({
   slug,
@@ -25,6 +29,7 @@ export function SpinExperience({
   const [result, setResult] = useState<SpinWheelResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const segmentAngle = segments.length > 0 ? 360 / segments.length : 0;
 
@@ -39,6 +44,7 @@ export function SpinExperience({
       name: formData.get("name"),
       email: formData.get("email"),
       honeypot: formData.get("honeypot"),
+      turnstileToken: turnstileToken ?? undefined,
     };
 
     try {
@@ -76,6 +82,7 @@ export function SpinExperience({
         setResult(spinResult);
         setPhase("result");
         setSubmitting(false);
+        if (spinResult.code) playWinChime();
       }, 4200);
     } catch {
       setError("No pudimos conectar con el servidor. Probá de nuevo.");
@@ -83,8 +90,11 @@ export function SpinExperience({
     }
   }
 
+  const showConfetti = phase === "result" && !!result?.code && !result.already_played;
+
   return (
-    <div className="flex flex-col items-center gap-8">
+    <div className="relative flex w-full flex-col items-center gap-8">
+      {showConfetti && <Confetti />}
       <Wheel segments={segments} rotationDeg={rotation} transitionMs={transitionMs} size={280} />
 
       {phase === "form" && (
@@ -101,8 +111,16 @@ export function SpinExperience({
             <label htmlFor="honeypot">No completar</label>
             <input id="honeypot" name="honeypot" type="text" tabIndex={-1} autoComplete="off" />
           </div>
+          {TURNSTILE_SITE_KEY && (
+            <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={setTurnstileToken} />
+          )}
           {error && <p className="text-sm text-brand-danger">{error}</p>}
-          <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={submitting || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
+          >
             {submitting ? "Girando..." : "Girar la ruleta"}
           </Button>
           <p className="text-center text-xs text-brand-muted">
@@ -120,7 +138,11 @@ export function SpinExperience({
           )}
           <p className="text-lg font-semibold">{result.segment_label}</p>
           {result.code ? (
-            <div className="rounded-lg border border-brand-accent bg-brand-accent/10 p-4">
+            <div
+              className={`rounded-lg border border-brand-accent bg-brand-accent/10 p-4 ${
+                showConfetti ? "win-pop" : ""
+              }`}
+            >
               <p className="text-xs text-brand-muted">Tu código premio</p>
               <p className="font-mono text-xl font-bold text-brand-accent">{result.code}</p>
               <p className="mt-2 text-xs text-brand-muted">

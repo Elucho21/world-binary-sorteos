@@ -72,3 +72,21 @@ export async function logout() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function setPassword(
+  _prevState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) {
+    return { error: "La contraseña debe tener al menos 8 caracteres." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: "No se pudo guardar la contraseña. Probá abrir el link de invitación de nuevo." };
+  }
+
+  redirect("/dashboard");
+}

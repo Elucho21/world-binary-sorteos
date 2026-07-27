@@ -51,3 +51,10 @@ export async function requireSuperAdmin(): Promise<Profile> {
   if (profile.role !== "super_admin") redirect("/dashboard");
   return profile;
 }
+
+// A "Mi equipo" sub-account manages the owning educator's sorteos, not its
+// own — every educator_id read/write in the dashboard should go through
+// this instead of profile.id directly.
+export function effectiveEducatorId(profile: Profile): string {
+  return profile.managed_by ?? profile.id;
+}

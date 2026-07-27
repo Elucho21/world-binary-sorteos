@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApprovedEducator } from "@/lib/auth/dal";
+import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,12 +22,43 @@ const statusLabel: Record<SorteoStatus, string> = {
 
 export default async function DashboardPage() {
   const profile = await requireApprovedEducator();
+  const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
   const { data: sorteos } = await supabase
     .from("sorteos")
     .select("id, name, slug, status, created_at")
-    .eq("educator_id", profile.id)
+    .eq("educator_id", educatorId)
     .order("created_at", { ascending: false });
+
+  const [{ count: segmentCount }, { count: availableCodeCount }] = await Promise.all([
+    supabase
+      .from("wheel_segments")
+      .select("id", { count: "exact", head: true })
+      .in("sorteo_id", (sorteos ?? []).map((s) => s.id)),
+    supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
+      .eq("educator_id", educatorId)
+      .eq("status", "available"),
+  ]);
+
+  const hasSorteo = (sorteos ?? []).length > 0;
+  const hasActiveSorteo = (sorteos ?? []).some((s) => s.status === "active");
+  const checklist = [
+    { done: hasSorteo, label: "Creá tu primer sorteo", href: "/dashboard/sorteos/new" },
+    {
+      done: (segmentCount ?? 0) > 0,
+      label: "Configurá los segmentos de la ruleta",
+      href: hasSorteo ? `/dashboard/sorteos/${sorteos![0].id}/segments` : "/dashboard/sorteos/new",
+    },
+    {
+      done: (availableCodeCount ?? 0) > 0,
+      label: "Cargá cuentas bono como premio",
+      href: "/dashboard/codes",
+    },
+    { done: hasActiveSorteo, label: "Activá el sorteo", href: hasSorteo ? `/dashboard/sorteos/${sorteos![0].id}` : "/dashboard/sorteos/new" },
+  ];
+  const showChecklist = !checklist.every((step) => step.done);
 
   return (
     <div className="space-y-6">
@@ -40,6 +71,36 @@ export default async function DashboardPage() {
           <Button>Nuevo sorteo</Button>
         </Link>
       </div>
+
+      {showChecklist && (
+        <Card>
+          <CardTitle>Primeros pasos</CardTitle>
+          <CardDescription className="mt-1">
+            Seguí estos pasos para dejar tu sorteo listo para compartir.
+          </CardDescription>
+          <ul className="mt-3 space-y-2">
+            {checklist.map((step) => (
+              <li key={step.label}>
+                <Link
+                  href={step.href}
+                  className="flex items-center gap-2 text-sm hover:text-brand-primary"
+                >
+                  <span
+                    className={
+                      step.done
+                        ? "flex h-5 w-5 items-center justify-center rounded-full bg-brand-primary text-xs text-brand-primary-foreground"
+                        : "flex h-5 w-5 items-center justify-center rounded-full border border-brand-border text-xs text-brand-muted"
+                    }
+                  >
+                    {step.done ? "✓" : ""}
+                  </span>
+                  <span className={step.done ? "text-brand-muted line-through" : ""}>{step.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {!sorteos || sorteos.length === 0 ? (
         <Card>

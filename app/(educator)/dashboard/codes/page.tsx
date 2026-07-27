@@ -1,4 +1,4 @@
-import { requireApprovedEducator } from "@/lib/auth/dal";
+import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,12 +6,13 @@ import { ManualCodesForm, FileCodesForm } from "@/components/dashboard/code-uplo
 
 export default async function CodesPage() {
   const profile = await requireApprovedEducator();
+  const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
 
   const { data: codes } = await supabase
     .from("prize_codes")
     .select("id, code, status, source, created_at")
-    .eq("educator_id", profile.id)
+    .eq("educator_id", educatorId)
     .order("created_at", { ascending: false });
 
   const all = codes ?? [];

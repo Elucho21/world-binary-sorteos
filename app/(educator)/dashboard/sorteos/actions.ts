@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireApprovedEducator } from "@/lib/auth/dal";
+import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sorteoSchema, segmentSchema } from "@/lib/validation";
 
@@ -32,7 +32,7 @@ export async function createSorteo(_prev: FormState, formData: FormData): Promis
   const { data, error } = await supabase
     .from("sorteos")
     .insert({
-      educator_id: profile.id,
+      educator_id: effectiveEducatorId(profile),
       name: parsed.data.name,
       slug: parsed.data.slug,
       description: parsed.data.description || null,
@@ -88,13 +88,90 @@ export async function updateSorteo(sorteoId: string, _prev: FormState, formData:
   return undefined;
 }
 
-export async function setSorteoStatus(sorteoId: string, status: "draft" | "active" | "paused" | "ended") {
+export async function setSorteoStatus(
+  sorteoId: string,
+  status: "draft" | "active" | "paused" | "ended"
+): Promise<FormState> {
   await requireApprovedEducator();
   const supabase = await createClient();
+
+  if (status === "active") {
+    const { data: segments } = await supabase
+      .from("wheel_segments")
+      .select("id, is_consolation")
+      .eq("sorteo_id", sorteoId)
+      .eq("is_active", true);
+
+    const hasConsolation = (segments ?? []).some((s) => s.is_consolation);
+    if (!hasConsolation) {
+      const prizeSegmentIds = (segments ?? []).filter((s) => !s.is_consolation).map((s) => s.id);
+      const availableCount = prizeSegmentIds.length
+        ? (
+            await supabase
+              .from("prize_codes")
+              .select("id", { count: "exact", head: true })
+              .in("segment_id", prizeSegmentIds)
+              .eq("status", "available")
+          ).count ?? 0
+        : 0;
+
+      if (availableCount === 0) {
+        return {
+          error:
+            "No podés activar este sorteo: ningún segmento tiene códigos disponibles ni hay un segmento de consuelo. Cargá premios o agregá un segmento sin premio primero.",
+        };
+      }
+    }
+  }
+
   const { error } = await supabase.from("sorteos").update({ status }).eq("id", sorteoId);
-  if (error) throw new Error(error.message);
+  if (error) return { error: "No se pudo cambiar el estado del sorteo." };
   revalidatePath(`/dashboard/sorteos/${sorteoId}`);
   revalidatePath("/dashboard");
+  return undefined;
+}
+
+export async function cloneSorteo(sorteoId: string) {
+  await requireApprovedEducator();
+  const supabase = await createClient();
+
+  const { data: original } = await supabase.from("sorteos").select("*").eq("id", sorteoId).single();
+  if (!original) throw new Error("Sorteo no encontrado.");
+
+  const slug = `${original.slug}-copia-${Date.now().toString(36)}`;
+
+  const { data: newSorteo, error } = await supabase
+    .from("sorteos")
+    .insert({
+      educator_id: original.educator_id,
+      name: `${original.name} (copia)`,
+      slug,
+      description: original.description,
+      max_entries: original.max_entries,
+    })
+    .select("id")
+    .single();
+
+  if (error || !newSorteo) throw new Error("No se pudo duplicar el sorteo.");
+
+  const { data: segments } = await supabase.from("wheel_segments").select("*").eq("sorteo_id", sorteoId);
+  if (segments && segments.length > 0) {
+    await supabase.from("wheel_segments").insert(
+      segments.map((s) => ({
+        sorteo_id: newSorteo.id,
+        label: s.label,
+        color: s.color,
+        weight: s.weight,
+        prize_tier: s.prize_tier,
+        sort_order: s.sort_order,
+        is_active: s.is_active,
+        is_consolation: s.is_consolation,
+      }))
+    );
+  }
+
+  revalidatePath("/dashboard");
+  redirect(`/dashboard/sorteos/${newSorteo.id}`);
 }
 
 export async function deleteSorteo(sorteoId: string) {

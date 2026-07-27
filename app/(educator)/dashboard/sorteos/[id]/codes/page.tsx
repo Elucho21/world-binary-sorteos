@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireApprovedEducator } from "@/lib/auth/dal";
+import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { SegmentCodesPanel } from "@/components/dashboard/segment-codes-panel";
@@ -8,6 +8,7 @@ import { SegmentCodesPanel } from "@/components/dashboard/segment-codes-panel";
 export default async function SorteoCodesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const profile = await requireApprovedEducator();
+  const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
 
   const { data: sorteo } = await supabase.from("sorteos").select("id, name").eq("id", id).single();
@@ -22,13 +23,13 @@ export default async function SorteoCodesPage({ params }: { params: Promise<{ id
   const { data: codes } = await supabase
     .from("prize_codes")
     .select("id, code, status, segment_id")
-    .eq("educator_id", profile.id)
+    .eq("educator_id", educatorId)
     .not("segment_id", "is", null);
 
   const { count: poolAvailable } = await supabase
     .from("prize_codes")
     .select("id", { count: "exact", head: true })
-    .eq("educator_id", profile.id)
+    .eq("educator_id", educatorId)
     .eq("status", "unassigned");
 
   const codesBySegment = new Map<string, { id: string; code: string; status: string }[]>();

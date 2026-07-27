@@ -25,6 +25,7 @@ export type Profile = {
   display_name: string | null;
   brand_name: string | null;
   avatar_url: string | null;
+  managed_by: string | null;
   created_at: string;
 };
 
@@ -105,7 +106,17 @@ export type AdminSettings = {
   id: true;
   site_name: string;
   support_email: string | null;
+  webhook_url: string | null;
   updated_at: string;
+};
+
+export type AuditLog = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  target_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
 };
 
 export type Banner = {
@@ -183,6 +194,7 @@ export type Database = {
       entries: { Row: Entry; Insert: Partial<Entry>; Update: Partial<Entry>; Relationships: [] };
       admin_settings: { Row: AdminSettings; Insert: Partial<AdminSettings>; Update: Partial<AdminSettings>; Relationships: [] };
       banners: { Row: Banner; Insert: Partial<Banner> & { title: string; image_url: string; placement: BannerPlacement }; Update: Partial<Banner>; Relationships: [] };
+      audit_log: { Row: AuditLog; Insert: Partial<AuditLog> & { action: string }; Update: Partial<AuditLog>; Relationships: [] };
     };
     Views: {
       public_sorteos: { Row: PublicSorteo; Relationships: [] };

@@ -61,4 +61,5 @@ export const registrationSchema = z.object({
   name: z.string().trim().min(2, "Ingresá tu nombre."),
   email: z.string().trim().email("Ingresá un email válido."),
   honeypot: z.string().max(0).optional().or(z.literal("")),
+  turnstileToken: z.string().optional(),
 });

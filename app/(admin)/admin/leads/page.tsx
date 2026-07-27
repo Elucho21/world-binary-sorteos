@@ -1,7 +1,6 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/card";
-import { ExportCsvButton } from "@/components/dashboard/export-csv-button";
+import { LeadsTable } from "@/components/admin/leads-table";
 
 interface ParticipantRow {
   id: string;
@@ -38,43 +37,12 @@ export default async function AdminLeadsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Leads</h1>
-          <p className="text-sm text-brand-muted">{participants.length} participantes en total.</p>
-        </div>
-        <ExportCsvButton filename="leads-world-binary.csv" rows={csvRows} />
+      <div>
+        <h1 className="text-2xl font-semibold">Leads</h1>
+        <p className="text-sm text-brand-muted">{participants.length} participantes en total.</p>
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-brand-border text-brand-muted">
-            <tr>
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Sorteo</th>
-              <th className="px-4 py-3">Educador</th>
-            </tr>
-          </thead>
-          <tbody>
-            {csvRows.map((row, i) => (
-              <tr key={i} className="border-b border-brand-border/60">
-                <td className="px-4 py-3">{row.nombre}</td>
-                <td className="px-4 py-3">{row.email}</td>
-                <td className="px-4 py-3">{row.sorteo}</td>
-                <td className="px-4 py-3">{row.educador}</td>
-              </tr>
-            ))}
-            {csvRows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-brand-muted">
-                  Todavía no hay leads.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+      <LeadsTable rows={csvRows} />
     </div>
   );
 }

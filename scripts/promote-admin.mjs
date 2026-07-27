@@ -49,4 +49,11 @@ if (updateError) {
   process.exit(1);
 }
 
+await supabase.from("audit_log").insert({
+  actor_id: targetUser.id,
+  action: "promoted_to_super_admin",
+  target_id: targetUser.id,
+  metadata: { via: "scripts/promote-admin.mjs", email },
+});
+
 console.log(`Listo: ${email} ahora es super_admin y está approved.`);

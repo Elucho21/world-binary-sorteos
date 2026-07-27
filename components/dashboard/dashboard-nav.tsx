@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/dashboard", label: "Mis sorteos" },
   { href: "/dashboard/codes", label: "Cuentas bono" },
+  { href: "/dashboard/team", label: "Mi equipo" },
 ];
 
 export function DashboardNav() {
