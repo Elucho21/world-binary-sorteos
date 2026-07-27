@@ -47,27 +47,26 @@ export async function adminUploadToWallet(_prev: FormState, formData: FormData):
   return { success: `Se cargaron ${result.inserted} códigos a la bolsa general del educador.` };
 }
 
-interface SegmentWithSorteo {
+interface SorteoWithEducator {
   id: string;
-  sorteos: { educator_id: string } | { educator_id: string }[] | null;
+  educator_id: string;
 }
 
-export async function adminUploadToSegment(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function adminUploadToSorteo(_prev: FormState, formData: FormData): Promise<FormState> {
   const admin = await requireSuperAdmin();
-  const segmentId = String(formData.get("segmentId") ?? "");
-  if (!segmentId) return { error: "Elegí un segmento." };
+  const sorteoId = String(formData.get("sorteoId") ?? "");
+  if (!sorteoId) return { error: "Elegí un sorteo." };
 
   const supabase = await createClient();
   const { data } = await supabase
-    .from("wheel_segments")
-    .select("id, sorteos(educator_id)")
-    .eq("id", segmentId)
+    .from("sorteos")
+    .select("id, educator_id")
+    .eq("id", sorteoId)
     .single();
 
-  const segment = data as unknown as SegmentWithSorteo | null;
-  const sorteoRelation = segment?.sorteos;
-  const educatorId = Array.isArray(sorteoRelation) ? sorteoRelation[0]?.educator_id : sorteoRelation?.educator_id;
-  if (!educatorId) return { error: "No se pudo determinar el educador de ese segmento." };
+  const sorteo = data as unknown as SorteoWithEducator | null;
+  const educatorId = sorteo?.educator_id;
+  if (!educatorId) return { error: "No se pudo determinar el educador de ese sorteo." };
 
   const parsedCodes = await codesFromFormData(formData);
   if (parsedCodes.error) return { error: parsedCodes.error };
@@ -79,10 +78,10 @@ export async function adminUploadToSegment(_prev: FormState, formData: FormData)
     method: parsedCodes.method,
     source: "admin_bulk",
     codes: parsedCodes.codes,
-    segmentId,
+    sorteoId,
   });
   if (result.error) return { error: result.error };
 
   revalidatePath("/admin/codes");
-  return { success: `Se cargaron ${result.inserted} códigos directo a ese segmento.` };
+  return { success: `Se cargaron ${result.inserted} códigos directo a ese sorteo.` };
 }

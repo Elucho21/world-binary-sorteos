@@ -28,9 +28,13 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
   const { data: sorteo } = await supabase.from("sorteos").select("*").eq("id", id).single();
   if (!sorteo) notFound();
 
-  const [{ count: segmentCount }, { count: participantCount }] = await Promise.all([
-    supabase.from("wheel_segments").select("id", { count: "exact", head: true }).eq("sorteo_id", id),
+  const [{ count: participantCount }, { count: prizeCount }] = await Promise.all([
     supabase.from("participants").select("id", { count: "exact", head: true }).eq("sorteo_id", id),
+    supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
+      .eq("sorteo_id", id)
+      .eq("status", "available"),
   ]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -40,7 +44,7 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
     width: 220,
     color: { dark: "#191919", light: "#f7f7f7" },
   });
-  const shareText = `🎡 ¡Girá la ruleta de ${sorteo.name} y ganá una cuenta bono de World Binary! Participá acá: ${publicUrl}`;
+  const shareText = `🎉 ¡Registrate en el sorteo de ${sorteo.name} y participá por una cuenta bono de World Binary! Anotate acá: ${publicUrl}`;
 
   return (
     <div className="space-y-6">
@@ -62,19 +66,19 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
           </a>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/sorteos/${id}/segments`}>
-            <Button variant="secondary" size="sm">
-              Ruleta ({segmentCount ?? 0})
-            </Button>
-          </Link>
           <Link href={`/dashboard/sorteos/${id}/codes`}>
             <Button variant="secondary" size="sm">
-              Códigos
+              Premios ({prizeCount ?? 0})
             </Button>
           </Link>
           <Link href={`/dashboard/sorteos/${id}/participants`}>
             <Button variant="secondary" size="sm">
               Participantes ({participantCount ?? 0})
+            </Button>
+          </Link>
+          <Link href={`/dashboard/sorteos/${id}/winners`}>
+            <Button variant={sorteo.drawn_at ? "secondary" : "primary"} size="sm">
+              {sorteo.drawn_at ? "Ver ganadores" : "Sortear"}
             </Button>
           </Link>
           <Link href={`/dashboard/sorteos/${id}/stats`}>
@@ -128,7 +132,7 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
         <CardHeader>
           <CardTitle>Zona de riesgo</CardTitle>
           <CardDescription>
-            Borrar el sorteo elimina también sus segmentos, participantes y giros.
+            Borrar el sorteo elimina también sus participantes y ganadores registrados.
           </CardDescription>
         </CardHeader>
         <ConfirmButton

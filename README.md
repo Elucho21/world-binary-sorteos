@@ -1,9 +1,11 @@
 # World Binary — Sorteos
 
-Plataforma de sorteos con ruleta para los educadores/IBs de World Binary. Los
-participantes se registran (nombre + email), giran una ruleta configurada por
-el educador y ganan códigos de cuentas bono que canjean directamente con el
-educador o con World Binary.
+Plataforma de sorteos clásicos para los educadores/IBs de World Binary. Los
+participantes se registran (nombre + email) mientras el sorteo está activo;
+el educador dispara el sorteo una sola vez, una ruleta animada va cayendo en
+cada ganador (la cantidad es configurable por sorteo) y cada uno recibe un
+código de cuenta bono que canjea directamente con el educador o con World
+Binary.
 
 Ver el plan completo de producto/arquitectura en
 `C:\Users\lucia\.claude\plans\quiero-crear-una-web-soft-garden.md`.
@@ -36,10 +38,13 @@ hacer automáticamente:
    podés desactivar "Confirm email" (si lo dejás activado, el flujo de
    signup de educadores va a pedir confirmar el mail antes de poder
    loguearse — el código ya contempla ambos casos).
-5. En **SQL Editor**, pegá y ejecutá el contenido completo de
-   `supabase/migrations/0001_init.sql`. Esto crea todas las tablas, las
-   políticas RLS, la función `spin_wheel()` y el trigger que crea el perfil
-   de cada usuario nuevo.
+5. En **SQL Editor**, pegá y ejecutá en orden el contenido completo de
+   `supabase/migrations/0001_init.sql`, `0002_teams_audit_webhook.sql` y
+   `0003_raffle_redesign.sql`. Entre los tres crean todas las tablas, las
+   políticas RLS, la función `register_participant()` y el trigger que crea
+   el perfil de cada usuario nuevo. (`0003` es la que pasó el mecanismo de
+   "ruleta individual" a "sorteo clásico": si ya tenías corridas `0001`/`0002`
+   de antes, solo hace falta correr `0003`.)
 6. Mirá `supabase/seed.sql` para los pasos de bootstrap: crear tu primera
    cuenta de Super Admin y aprobar un educador de prueba.
 
@@ -102,7 +107,8 @@ Para un proyecto nuevo desde cero:
    **Site settings → Environment variables** (usá un proyecto Supabase de
    producción separado del de desarrollo).
 3. Poné `NEXT_PUBLIC_SITE_URL` con la URL real de Netlify.
-4. Corré la migración `0001_init.sql` contra el proyecto de producción.
+4. Corré las migraciones `0001_init.sql`, `0002_teams_audit_webhook.sql` y
+   `0003_raffle_redesign.sql`, en orden, contra el proyecto de producción.
 
 ## Banners / imágenes publicitarias
 
@@ -123,6 +129,5 @@ pública. No se armó un uploader propio — subí la imagen a Supabase Storage
   `sorteos.mechanic_type` (default `'wheel'`) como gancho de extensibilidad,
   pero solo la ruleta está implementada.
 - **Anti-abuso**: hay honeypot + límite de intentos por IP dentro de
-  `spin_wheel()`. Si en algún momento hace falta más (Cloudflare Turnstile,
-  por ejemplo), el punto de integración natural es `app/api/spin/route.ts`
-  antes de llamar al RPC.
+  `register_participant()`, más validación de MX y Turnstile (env-gated) en
+  `app/api/register/route.ts` antes de llamar al RPC.

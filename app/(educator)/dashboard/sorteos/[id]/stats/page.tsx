@@ -10,19 +10,25 @@ export default async function SorteoStatsPage({ params }: { params: Promise<{ id
   await requireApprovedEducator();
   const supabase = await createClient();
 
-  const { data: sorteo } = await supabase.from("sorteos").select("id, name").eq("id", id).single();
+  const { data: sorteo } = await supabase
+    .from("sorteos")
+    .select("id, name, winners_count, drawn_at")
+    .eq("id", id)
+    .single();
   if (!sorteo) notFound();
 
-  const { data: entries } = await supabase
-    .from("entries")
-    .select("spun_at, prize_code_id")
-    .eq("sorteo_id", id);
+  const [{ data: participants }, { count: prizesAvailable }] = await Promise.all([
+    supabase.from("participants").select("created_at").eq("sorteo_id", id),
+    supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
+      .eq("sorteo_id", id)
+      .eq("status", "available"),
+  ]);
 
-  const rows = entries ?? [];
+  const rows = participants ?? [];
   const total = rows.length;
-  const withPrize = rows.filter((e) => e.prize_code_id).length;
-  const prizeRate = total > 0 ? Math.round((withPrize / total) * 100) : 0;
-  const chartData = groupByDay(rows.map((e) => e.spun_at));
+  const chartData = groupByDay(rows.map((p) => p.created_at));
 
   return (
     <div className="space-y-6">
@@ -34,21 +40,21 @@ export default async function SorteoStatsPage({ params }: { params: Promise<{ id
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-4 text-center">
           <p className="text-2xl font-semibold">{total}</p>
-          <p className="text-xs text-brand-muted">Giros totales</p>
+          <p className="text-xs text-brand-muted">Inscriptos totales</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-2xl font-semibold">{withPrize}</p>
-          <p className="text-xs text-brand-muted">Con premio</p>
+          <p className="text-2xl font-semibold">{sorteo.winners_count}</p>
+          <p className="text-xs text-brand-muted">Ganadores a sortear</p>
         </Card>
         <Card className="p-4 text-center">
-          <p className="text-2xl font-semibold">{prizeRate}%</p>
-          <p className="text-xs text-brand-muted">Tasa de premio</p>
+          <p className="text-2xl font-semibold">{prizesAvailable ?? 0}</p>
+          <p className="text-xs text-brand-muted">Premios disponibles</p>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Giros por día</CardTitle>
+          <CardTitle>Inscriptos por día</CardTitle>
           <CardDescription>Últimos 14 días.</CardDescription>
         </CardHeader>
         <MiniBarChart data={chartData} />

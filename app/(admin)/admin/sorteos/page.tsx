@@ -38,16 +38,14 @@ export default async function AdminSorteosPage() {
   await requireSuperAdmin();
   const supabase = await createClient();
 
-  const [{ data: sorteosData }, { data: participantRows }, { data: segmentRows }, { data: codeRows }] =
-    await Promise.all([
-      supabase
-        .from("sorteos")
-        .select("id, name, slug, status, starts_at, ends_at, created_at, profiles(display_name)")
-        .order("created_at", { ascending: false }),
-      supabase.from("participants").select("sorteo_id"),
-      supabase.from("wheel_segments").select("id, sorteo_id, is_consolation"),
-      supabase.from("prize_codes").select("segment_id, status"),
-    ]);
+  const [{ data: sorteosData }, { data: participantRows }, { data: codeRows }] = await Promise.all([
+    supabase
+      .from("sorteos")
+      .select("id, name, slug, status, starts_at, ends_at, created_at, profiles(display_name)")
+      .order("created_at", { ascending: false }),
+    supabase.from("participants").select("sorteo_id"),
+    supabase.from("prize_codes").select("sorteo_id, status"),
+  ]);
 
   const sorteos = (sorteosData ?? []) as unknown as SorteoRow[];
 
@@ -56,24 +54,13 @@ export default async function AdminSorteosPage() {
     participantCounts.set(row.sorteo_id, (participantCounts.get(row.sorteo_id) ?? 0) + 1);
   }
 
-  const segmentToSorteo = new Map<string, string>();
-  const prizeSegmentCount = new Map<string, number>();
-  for (const seg of segmentRows ?? []) {
-    segmentToSorteo.set(seg.id, seg.sorteo_id);
-    if (!seg.is_consolation) {
-      prizeSegmentCount.set(seg.sorteo_id, (prizeSegmentCount.get(seg.sorteo_id) ?? 0) + 1);
-    }
-  }
-
   const codeCounts = new Map<string, { available: number; issued: number }>();
   for (const code of codeRows ?? []) {
-    if (!code.segment_id) continue;
-    const sorteoId = segmentToSorteo.get(code.segment_id);
-    if (!sorteoId) continue;
-    const current = codeCounts.get(sorteoId) ?? { available: 0, issued: 0 };
+    if (!code.sorteo_id) continue;
+    const current = codeCounts.get(code.sorteo_id) ?? { available: 0, issued: 0 };
     if (code.status === "available") current.available += 1;
     if (code.status === "issued" || code.status === "redeemed") current.issued += 1;
-    codeCounts.set(sorteoId, current);
+    codeCounts.set(code.sorteo_id, current);
   }
 
   return (
@@ -104,7 +91,6 @@ export default async function AdminSorteosPage() {
             {sorteos.map((sorteo) => {
               const profile = Array.isArray(sorteo.profiles) ? sorteo.profiles[0] : sorteo.profiles;
               const codes = codeCounts.get(sorteo.id) ?? { available: 0, issued: 0 };
-              const prizeSegments = prizeSegmentCount.get(sorteo.id) ?? 0;
               return (
                 <tr key={sorteo.id} className="border-b border-brand-border/60 hover:bg-brand-surface-raised">
                   <td className="px-4 py-3">
@@ -119,9 +105,9 @@ export default async function AdminSorteosPage() {
                   </td>
                   <td className="px-4 py-3">{participantCounts.get(sorteo.id) ?? 0}</td>
                   <td className="px-4 py-3">
-                    {prizeSegments === 0
+                    {codes.available === 0 && codes.issued === 0
                       ? "—"
-                      : `${prizeSegments} tipo${prizeSegments === 1 ? "" : "s"} · ${codes.available} disp. / ${codes.issued} emit.`}
+                      : `${codes.available} disp. / ${codes.issued} emit.`}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {formatDate(sorteo.starts_at)} — {formatDate(sorteo.ends_at)}

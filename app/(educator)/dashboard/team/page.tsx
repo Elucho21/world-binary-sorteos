@@ -33,7 +33,7 @@ export default async function TeamPage() {
         <h1 className="text-2xl font-semibold">Mi equipo</h1>
         <p className="text-sm text-brand-muted">
           Invitá a alguien que te ayude a gestionar tus sorteos. Va a tener el mismo acceso que
-          vos sobre tus sorteos, segmentos, códigos y participantes.
+          vos sobre tus sorteos, premios y participantes.
         </p>
       </div>
 

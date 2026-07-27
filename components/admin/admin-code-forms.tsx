@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { adminUploadToWallet, adminUploadToSegment, type FormState } from "@/app/(admin)/admin/codes/actions";
+import { adminUploadToWallet, adminUploadToSorteo, type FormState } from "@/app/(admin)/admin/codes/actions";
 import { Button } from "@/components/ui/button";
 import { Label, Textarea, Input } from "@/components/ui/input";
 
@@ -10,7 +10,7 @@ interface EducatorOption {
   label: string;
 }
 
-interface SegmentOption {
+interface SorteoOption {
   id: string;
   label: string;
 }
@@ -53,21 +53,21 @@ export function WalletUploadForm({ educators }: { educators: EducatorOption[] })
   );
 }
 
-export function SegmentUploadForm({ segments }: { segments: SegmentOption[] }) {
-  const [state, formAction, pending] = useActionState<FormState, FormData>(adminUploadToSegment, undefined);
+export function SorteoUploadForm({ sorteos }: { sorteos: SorteoOption[] }) {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(adminUploadToSorteo, undefined);
 
   return (
     <form action={formAction} className="space-y-3">
       <div>
-        <Label htmlFor="segmentId">Segmento</Label>
+        <Label htmlFor="sorteoId">Sorteo</Label>
         <select
-          id="segmentId"
-          name="segmentId"
+          id="sorteoId"
+          name="sorteoId"
           required
           className="w-full rounded-md border border-brand-border bg-brand-surface px-3 py-2 text-sm text-brand-text"
         >
-          <option value="">Elegí un segmento...</option>
-          {segments.map((s) => (
+          <option value="">Elegí un sorteo...</option>
+          {sorteos.map((s) => (
             <option key={s.id} value={s.id}>
               {s.label}
             </option>
@@ -75,12 +75,12 @@ export function SegmentUploadForm({ segments }: { segments: SegmentOption[] }) {
         </select>
       </div>
       <div>
-        <Label htmlFor="segment-codes">Códigos (uno por línea)</Label>
-        <Textarea id="segment-codes" name="codes" rows={4} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
+        <Label htmlFor="sorteo-codes">Códigos (uno por línea)</Label>
+        <Textarea id="sorteo-codes" name="codes" rows={4} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
       </div>
       <div>
-        <Label htmlFor="segment-file">...o archivo</Label>
-        <Input id="segment-file" name="file" type="file" accept=".csv,.txt" />
+        <Label htmlFor="sorteo-file">...o archivo</Label>
+        <Input id="sorteo-file" name="file" type="file" accept=".csv,.txt" />
       </div>
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
       {state?.success && <p className="text-sm text-brand-success">{state.success}</p>}

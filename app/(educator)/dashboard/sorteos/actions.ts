@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { sorteoSchema, segmentSchema } from "@/lib/validation";
+import { sorteoSchema } from "@/lib/validation";
 
 export type FormState = { error?: string } | undefined;
 
@@ -23,6 +23,7 @@ export async function createSorteo(_prev: FormState, formData: FormData): Promis
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt"),
     maxEntries: formData.get("maxEntries") || undefined,
+    winnersCount: formData.get("winnersCount") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -39,6 +40,7 @@ export async function createSorteo(_prev: FormState, formData: FormData): Promis
       starts_at: toTimestamp(parsed.data.startsAt),
       ends_at: toTimestamp(parsed.data.endsAt),
       max_entries: parsed.data.maxEntries ?? null,
+      winners_count: parsed.data.winnersCount,
     })
     .select("id")
     .single();
@@ -61,6 +63,7 @@ export async function updateSorteo(sorteoId: string, _prev: FormState, formData:
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt"),
     maxEntries: formData.get("maxEntries") || undefined,
+    winnersCount: formData.get("winnersCount") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -76,6 +79,7 @@ export async function updateSorteo(sorteoId: string, _prev: FormState, formData:
       starts_at: toTimestamp(parsed.data.startsAt),
       ends_at: toTimestamp(parsed.data.endsAt),
       max_entries: parsed.data.maxEntries ?? null,
+      winners_count: parsed.data.winnersCount,
     })
     .eq("id", sorteoId);
 
@@ -96,31 +100,17 @@ export async function setSorteoStatus(
   const supabase = await createClient();
 
   if (status === "active") {
-    const { data: segments } = await supabase
-      .from("wheel_segments")
-      .select("id, is_consolation")
+    const { count: availableCount } = await supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
       .eq("sorteo_id", sorteoId)
-      .eq("is_active", true);
+      .eq("status", "available");
 
-    const hasConsolation = (segments ?? []).some((s) => s.is_consolation);
-    if (!hasConsolation) {
-      const prizeSegmentIds = (segments ?? []).filter((s) => !s.is_consolation).map((s) => s.id);
-      const availableCount = prizeSegmentIds.length
-        ? (
-            await supabase
-              .from("prize_codes")
-              .select("id", { count: "exact", head: true })
-              .in("segment_id", prizeSegmentIds)
-              .eq("status", "available")
-          ).count ?? 0
-        : 0;
-
-      if (availableCount === 0) {
-        return {
-          error:
-            "No podés activar este sorteo: ningún segmento tiene códigos disponibles ni hay un segmento de consuelo. Cargá premios o agregá un segmento sin premio primero.",
-        };
-      }
+    if (!availableCount || availableCount === 0) {
+      return {
+        error:
+          "No podés activar este sorteo: todavía no le cargaste ninguna cuenta bono como premio.",
+      };
     }
   }
 
@@ -148,27 +138,12 @@ export async function cloneSorteo(sorteoId: string) {
       slug,
       description: original.description,
       max_entries: original.max_entries,
+      winners_count: original.winners_count,
     })
     .select("id")
     .single();
 
   if (error || !newSorteo) throw new Error("No se pudo duplicar el sorteo.");
-
-  const { data: segments } = await supabase.from("wheel_segments").select("*").eq("sorteo_id", sorteoId);
-  if (segments && segments.length > 0) {
-    await supabase.from("wheel_segments").insert(
-      segments.map((s) => ({
-        sorteo_id: newSorteo.id,
-        label: s.label,
-        color: s.color,
-        weight: s.weight,
-        prize_tier: s.prize_tier,
-        sort_order: s.sort_order,
-        is_active: s.is_active,
-        is_consolation: s.is_consolation,
-      }))
-    );
-  }
 
   revalidatePath("/dashboard");
   redirect(`/dashboard/sorteos/${newSorteo.id}`);
@@ -183,94 +158,85 @@ export async function deleteSorteo(sorteoId: string) {
   redirect("/dashboard");
 }
 
-// --- wheel segments ---
+// --- the draw ---
 
-export async function createSegment(sorteoId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+export type DrawnWinner = { participantId: string; name: string; code: string | null };
+export type DrawResult = { error?: string; winners?: DrawnWinner[] };
+
+export async function drawWinners(sorteoId: string): Promise<DrawResult> {
   await requireApprovedEducator();
-  const parsed = segmentSchema.safeParse({
-    label: formData.get("label"),
-    color: formData.get("color"),
-    weight: formData.get("weight"),
-    prizeTier: formData.get("prizeTier"),
-    isConsolation: formData.get("isConsolation") === "on",
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
-  }
-
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("wheel_segments")
-    .select("id", { count: "exact", head: true })
+
+  const { data: sorteo } = await supabase.from("sorteos").select("*").eq("id", sorteoId).single();
+  if (!sorteo) return { error: "Sorteo no encontrado." };
+  if (sorteo.drawn_at) return { error: "Este sorteo ya fue sorteado." };
+
+  const { data: participants } = await supabase
+    .from("participants")
+    .select("id, name")
     .eq("sorteo_id", sorteoId);
 
-  const { error } = await supabase.from("wheel_segments").insert({
-    sorteo_id: sorteoId,
-    label: parsed.data.label,
-    color: parsed.data.color,
-    weight: parsed.data.weight,
-    prize_tier: parsed.data.prizeTier || null,
-    is_consolation: parsed.data.isConsolation ?? false,
-    sort_order: count ?? 0,
-  });
-
-  if (error) return { error: "No se pudo crear el segmento." };
-
-  revalidatePath(`/dashboard/sorteos/${sorteoId}/segments`);
-  return undefined;
-}
-
-export async function updateSegment(
-  sorteoId: string,
-  segmentId: string,
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  await requireApprovedEducator();
-  const parsed = segmentSchema.safeParse({
-    label: formData.get("label"),
-    color: formData.get("color"),
-    weight: formData.get("weight"),
-    prizeTier: formData.get("prizeTier"),
-    isConsolation: formData.get("isConsolation") === "on",
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  if (!participants || participants.length === 0) {
+    return { error: "Todavía no hay participantes registrados." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("wheel_segments")
-    .update({
-      label: parsed.data.label,
-      color: parsed.data.color,
-      weight: parsed.data.weight,
-      prize_tier: parsed.data.prizeTier || null,
-      is_consolation: parsed.data.isConsolation ?? false,
-    })
-    .eq("id", segmentId);
+  const { data: availableCodes } = await supabase
+    .from("prize_codes")
+    .select("id")
+    .eq("sorteo_id", sorteoId)
+    .eq("status", "available")
+    .limit(sorteo.winners_count);
 
-  if (error) return { error: "No se pudo guardar el segmento." };
+  if (!availableCodes || availableCodes.length === 0) {
+    return { error: "No hay premios cargados para este sorteo. Cargá códigos primero." };
+  }
 
-  revalidatePath(`/dashboard/sorteos/${sorteoId}/segments`);
-  return undefined;
-}
+  const winnersCount = Math.min(sorteo.winners_count, participants.length, availableCodes.length);
 
-export async function toggleSegmentActive(sorteoId: string, segmentId: string, isActive: boolean) {
-  await requireApprovedEducator();
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("wheel_segments")
-    .update({ is_active: isActive })
-    .eq("id", segmentId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/dashboard/sorteos/${sorteoId}/segments`);
-}
+  const shuffled = [...participants];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const chosen = shuffled.slice(0, winnersCount);
 
-export async function deleteSegment(sorteoId: string, segmentId: string) {
-  await requireApprovedEducator();
-  const supabase = await createClient();
-  const { error } = await supabase.from("wheel_segments").delete().eq("id", segmentId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/dashboard/sorteos/${sorteoId}/segments`);
+  const results: DrawnWinner[] = [];
+
+  for (let i = 0; i < chosen.length; i++) {
+    const participant = chosen[i];
+    const codeId = availableCodes[i].id;
+
+    const { data: claimedCode, error: claimError } = await supabase
+      .from("prize_codes")
+      .update({ status: "issued", issued_to: participant.id, issued_at: new Date().toISOString() })
+      .eq("id", codeId)
+      .eq("status", "available")
+      .select("code")
+      .single();
+
+    if (claimError || !claimedCode) continue;
+
+    await supabase.from("raffle_winners").insert({
+      sorteo_id: sorteoId,
+      participant_id: participant.id,
+      prize_code_id: codeId,
+      position: i + 1,
+    });
+
+    results.push({ participantId: participant.id, name: participant.name, code: claimedCode.code });
+  }
+
+  if (results.length === 0) {
+    return { error: "No se pudo completar el sorteo. Probá de nuevo." };
+  }
+
+  await supabase
+    .from("sorteos")
+    .update({ drawn_at: new Date().toISOString(), status: "ended" })
+    .eq("id", sorteoId);
+
+  revalidatePath(`/dashboard/sorteos/${sorteoId}`);
+  revalidatePath("/dashboard");
+
+  return { winners: results };
 }

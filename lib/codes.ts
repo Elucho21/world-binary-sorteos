@@ -12,7 +12,7 @@ export async function insertCodeBatch(
     method: CodeBatchMethod;
     source: PrizeCodeSource;
     codes: string[];
-    segmentId?: string | null;
+    sorteoId?: string | null;
   }
 ): Promise<{ inserted: number; error?: string }> {
   const uniqueCodes = Array.from(new Set(params.codes.map((c) => c.trim()).filter(Boolean)));
@@ -38,10 +38,10 @@ export async function insertCodeBatch(
 
   const rows = uniqueCodes.map((code) => ({
     educator_id: params.educatorId,
-    segment_id: params.segmentId ?? null,
+    sorteo_id: params.sorteoId ?? null,
     batch_id: batch.id,
     code,
-    status: params.segmentId ? ("available" as const) : ("unassigned" as const),
+    status: params.sorteoId ? ("available" as const) : ("unassigned" as const),
     created_by: params.createdBy,
     source: params.source,
   }));

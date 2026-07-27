@@ -4,17 +4,16 @@ import { createClient } from "@/lib/supabase/server";
 import { registrationSchema } from "@/lib/validation";
 import { hasMxRecord } from "@/lib/mx-check";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import type { SpinWheelResult } from "@/types/database.types";
+import type { RegisterParticipantResult } from "@/types/database.types";
 
 function friendlyError(message: string) {
   if (message.includes("sorteo not available")) return "Este sorteo no está disponible.";
   if (message.includes("too many attempts")) return "Demasiados intentos, probá más tarde.";
-  if (message.includes("no prizes available")) return "No quedan premios disponibles en este sorteo.";
   if (message.includes("invalid email")) return "Ingresá un email válido.";
   if (message.includes("invalid name")) return "Ingresá tu nombre.";
-  if (message.includes("sorteo has ended")) return "Este sorteo ya finalizó.";
+  if (message.includes("sorteo has ended")) return "Este sorteo ya cerró la inscripción.";
   if (message.includes("sorteo not started")) return "Este sorteo todavía no empezó.";
-  return "No se pudo procesar tu giro. Intentá de nuevo.";
+  return "No se pudo procesar tu registro. Intentá de nuevo.";
 }
 
 async function fireWebhookBestEffort(payload: Record<string, unknown>) {
@@ -34,7 +33,7 @@ async function fireWebhookBestEffort(payload: Record<string, unknown>) {
     }).catch(() => undefined);
     clearTimeout(timeout);
   } catch {
-    // Best-effort only — a CRM outage should never affect the participant's spin.
+    // Best-effort only — a CRM outage should never affect registration.
   }
 }
 
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("spin_wheel", {
+  const { data, error } = await supabase.rpc("register_participant", {
     p_slug: slug,
     p_name: parsed.data.name,
     p_email: parsed.data.email,
@@ -86,16 +85,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: friendlyError(error.message) }, { status: 400 });
   }
 
-  const result = data as SpinWheelResult;
-  if (!result.already_played) {
+  const result = data as RegisterParticipantResult;
+  if (!result.already_registered) {
     void fireWebhookBestEffort({
       name: parsed.data.name,
       email: parsed.data.email,
       sorteo_slug: slug,
-      premio: result.segment_label,
-      codigo: result.code,
+      evento: "nuevo_registro",
     });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(result);
 }

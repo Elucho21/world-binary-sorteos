@@ -36,9 +36,10 @@ export default function Home() {
 
         <div className="grid w-full gap-4 pt-10 text-left sm:grid-cols-3">
           <Card>
-            <CardTitle>Ruleta configurable</CardTitle>
+            <CardTitle>Sorteo en vivo con ruleta</CardTitle>
             <CardDescription className="mt-2">
-              Definí los segmentos, sus probabilidades y qué premio entrega cada uno.
+              Todos tus inscriptos entran a la ruleta; elegís cuántos ganadores salen y disparás
+              el sorteo cuando quieras.
             </CardDescription>
           </Card>
           <Card>

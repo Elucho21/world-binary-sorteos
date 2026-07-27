@@ -72,7 +72,7 @@ export default async function CodesPage() {
         <CardHeader>
           <CardTitle>Sin asignar ({unassigned.length})</CardTitle>
           <CardDescription>
-            Estos códigos están disponibles para asignar a un segmento desde cualquier sorteo.
+            Estos códigos están disponibles para asignar como premio desde cualquier sorteo.
           </CardDescription>
         </CardHeader>
         <div className="max-h-80 space-y-1 overflow-y-auto font-mono text-sm">

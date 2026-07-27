@@ -52,15 +52,21 @@ export function SorteoEditForm({ sorteo }: { sorteo: Sorteo }) {
           />
         </div>
       </div>
-      <div>
-        <Label htmlFor="maxEntries">Máximo de participantes</Label>
-        <Input
-          id="maxEntries"
-          name="maxEntries"
-          type="number"
-          min={1}
-          defaultValue={sorteo.max_entries ?? undefined}
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="maxEntries">Máximo de participantes</Label>
+          <Input
+            id="maxEntries"
+            name="maxEntries"
+            type="number"
+            min={1}
+            defaultValue={sorteo.max_entries ?? undefined}
+          />
+        </div>
+        <div>
+          <Label htmlFor="winnersCount">Cantidad de ganadores</Label>
+          <Input id="winnersCount" name="winnersCount" type="number" min={1} defaultValue={sorteo.winners_count} />
+        </div>
       </div>
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
       <Button type="submit" disabled={pending}>

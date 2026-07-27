@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/brand/site-header";
 import { SiteFooter } from "@/components/brand/site-footer";
 import { BannerStrip } from "@/components/brand/banner-strip";
-import { SpinExperience } from "@/components/wheel/spin-experience";
+import { RegistrationForm } from "@/components/public/registration-form";
 
 export default async function PublicSorteoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,16 +17,14 @@ export default async function PublicSorteoPage({ params }: { params: Promise<{ s
 
   if (!sorteo) notFound();
 
-  const [{ data: segments }, { data: banners }] = await Promise.all([
-    supabase
-      .from("public_wheel_segments")
-      .select("id, sorteo_id, label, color, sort_order")
-      .eq("sorteo_id", sorteo.id)
-      .order("sort_order", { ascending: true }),
+  const [{ data: sorteoDetails }, { data: banners }] = await Promise.all([
+    supabase.from("sorteos").select("winners_count, drawn_at").eq("id", sorteo.id).single(),
     supabase.from("active_banners").select("*").eq("placement", "public_sorteo_page"),
   ]);
 
   const educatorLabel = sorteo.educator_brand_name || sorteo.educator_display_name || "tu educador";
+  const winnersCount = sorteoDetails?.winners_count ?? 1;
+  const alreadyDrawn = !!sorteoDetails?.drawn_at;
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -36,12 +34,16 @@ export default async function PublicSorteoPage({ params }: { params: Promise<{ s
           <p className="text-sm font-medium text-brand-primary">Sorteo de {educatorLabel}</p>
           <h1 className="text-3xl font-bold tracking-tight">{sorteo.name}</h1>
           {sorteo.description && <p className="mt-2 text-brand-muted">{sorteo.description}</p>}
+          <p className="mt-3 text-sm text-brand-muted">
+            {winnersCount > 1 ? `Se sortean ${winnersCount} ganadores` : "Se sortea 1 ganador"} entre
+            todos los que se registren.
+          </p>
         </div>
 
-        {segments && segments.length > 0 ? (
-          <SpinExperience slug={slug} segments={segments} educatorLabel={educatorLabel} />
+        {alreadyDrawn ? (
+          <p className="text-brand-muted">Este sorteo ya cerró y se sorteó a los ganadores.</p>
         ) : (
-          <p className="text-brand-muted">Este sorteo todavía no tiene premios cargados.</p>
+          <RegistrationForm slug={slug} educatorLabel={educatorLabel} winnersCount={winnersCount} />
         )}
 
         {banners && banners.length > 0 && <BannerStrip banners={banners} />}

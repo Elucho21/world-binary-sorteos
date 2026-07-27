@@ -56,9 +56,15 @@ export function AdminNewSorteoForm({ educators }: { educators: EducatorOption[] 
           <Input id="endsAt" name="endsAt" type="datetime-local" />
         </div>
       </div>
-      <div>
-        <Label htmlFor="maxEntries">Máximo de participantes (opcional)</Label>
-        <Input id="maxEntries" name="maxEntries" type="number" min={1} />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="maxEntries">Máximo de participantes (opcional)</Label>
+          <Input id="maxEntries" name="maxEntries" type="number" min={1} />
+        </div>
+        <div>
+          <Label htmlFor="winnersCount">Cantidad de ganadores</Label>
+          <Input id="winnersCount" name="winnersCount" type="number" min={1} defaultValue={1} required />
+        </div>
       </div>
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
       <Button type="submit" className="w-full" disabled={pending}>

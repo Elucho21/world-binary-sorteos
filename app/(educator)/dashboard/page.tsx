@@ -30,31 +30,20 @@ export default async function DashboardPage() {
     .eq("educator_id", educatorId)
     .order("created_at", { ascending: false });
 
-  const [{ count: segmentCount }, { count: availableCodeCount }] = await Promise.all([
-    supabase
-      .from("wheel_segments")
-      .select("id", { count: "exact", head: true })
-      .in("sorteo_id", (sorteos ?? []).map((s) => s.id)),
-    supabase
-      .from("prize_codes")
-      .select("id", { count: "exact", head: true })
-      .eq("educator_id", educatorId)
-      .eq("status", "available"),
-  ]);
+  const { count: availableCodeCount } = await supabase
+    .from("prize_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("educator_id", educatorId)
+    .eq("status", "available");
 
   const hasSorteo = (sorteos ?? []).length > 0;
   const hasActiveSorteo = (sorteos ?? []).some((s) => s.status === "active");
   const checklist = [
     { done: hasSorteo, label: "Creá tu primer sorteo", href: "/dashboard/sorteos/new" },
     {
-      done: (segmentCount ?? 0) > 0,
-      label: "Configurá los segmentos de la ruleta",
-      href: hasSorteo ? `/dashboard/sorteos/${sorteos![0].id}/segments` : "/dashboard/sorteos/new",
-    },
-    {
       done: (availableCodeCount ?? 0) > 0,
       label: "Cargá cuentas bono como premio",
-      href: "/dashboard/codes",
+      href: hasSorteo ? `/dashboard/sorteos/${sorteos![0].id}/codes` : "/dashboard/codes",
     },
     { done: hasActiveSorteo, label: "Activá el sorteo", href: hasSorteo ? `/dashboard/sorteos/${sorteos![0].id}` : "/dashboard/sorteos/new" },
   ];

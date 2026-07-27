@@ -13,16 +13,16 @@ export default async function AdminStatsPage() {
   await requireSuperAdmin();
   const supabase = await createClient();
 
-  const [{ data: entries }, { count: totalParticipants }, { count: totalIssued }, { count: totalRedeemed }] =
+  const [{ data: recentParticipants }, { count: totalParticipants }, { count: totalIssued }, { count: totalRedeemed }] =
     await Promise.all([
-      supabase.from("entries").select("spun_at, prize_code_id").order("spun_at", { ascending: false }).limit(5000),
+      supabase.from("participants").select("created_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("participants").select("id", { count: "exact", head: true }),
       supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
       supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
     ]);
 
-  const rows = entries ?? [];
-  const chartData = groupByDay(rows.map((e) => e.spun_at));
+  const rows = recentParticipants ?? [];
+  const chartData = groupByDay(rows.map((p) => p.created_at));
 
   const { data: participantsBySorteo } = await supabase
     .from("participants")
@@ -64,7 +64,7 @@ export default async function AdminStatsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Giros por día</CardTitle>
+          <CardTitle>Inscriptos por día</CardTitle>
           <CardDescription>Últimos 14 días, todos los sorteos.</CardDescription>
         </CardHeader>
         <MiniBarChart data={chartData} />

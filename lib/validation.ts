@@ -22,17 +22,7 @@ export const sorteoSchema = z.object({
   startsAt: z.string().optional().or(z.literal("")),
   endsAt: z.string().optional().or(z.literal("")),
   maxEntries: z.coerce.number().int().positive().optional(),
-});
-
-export const segmentSchema = z.object({
-  label: z.string().trim().min(1, "El segmento necesita una etiqueta."),
-  color: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "Color hex inválido, ej: #2F6FED"),
-  weight: z.coerce.number().min(0, "El peso no puede ser negativo."),
-  prizeTier: z.string().trim().max(120).optional().or(z.literal("")),
-  isConsolation: z.coerce.boolean().optional(),
+  winnersCount: z.coerce.number().int().min(1, "Tiene que haber al menos 1 ganador.").default(1),
 });
 
 export const manualCodesSchema = z.object({

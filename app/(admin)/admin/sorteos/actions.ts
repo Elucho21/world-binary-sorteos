@@ -28,6 +28,7 @@ export async function adminCreateSorteo(_prev: FormState, formData: FormData): P
     startsAt: formData.get("startsAt"),
     endsAt: formData.get("endsAt"),
     maxEntries: formData.get("maxEntries") || undefined,
+    winnersCount: formData.get("winnersCount") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
@@ -44,6 +45,7 @@ export async function adminCreateSorteo(_prev: FormState, formData: FormData): P
       starts_at: toTimestamp(parsed.data.startsAt),
       ends_at: toTimestamp(parsed.data.endsAt),
       max_entries: parsed.data.maxEntries ?? null,
+      winners_count: parsed.data.winnersCount,
     })
     .select("id")
     .single();

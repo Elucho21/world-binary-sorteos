@@ -60,7 +60,6 @@ export async function uploadFileCodes(_prev: FormState, formData: FormData): Pro
 
 export async function assignFromPool(
   sorteoId: string,
-  segmentId: string,
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
@@ -84,7 +83,7 @@ export async function assignFromPool(
 
   const { error } = await supabase
     .from("prize_codes")
-    .update({ segment_id: segmentId, status: "available" })
+    .update({ sorteo_id: sorteoId, status: "available" })
     .in("id", ids);
 
   if (error) return { error: "No se pudo asignar los códigos." };
@@ -99,7 +98,7 @@ export async function unassignCode(sorteoId: string, prizeCodeId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("prize_codes")
-    .update({ segment_id: null, status: "unassigned" })
+    .update({ sorteo_id: null, status: "unassigned" })
     .eq("id", prizeCodeId)
     .eq("educator_id", effectiveEducatorId(profile))
     .eq("status", "available");
@@ -108,9 +107,8 @@ export async function unassignCode(sorteoId: string, prizeCodeId: string) {
   revalidatePath("/dashboard/codes");
 }
 
-export async function uploadManualCodesToSegment(
+export async function uploadManualCodesToSorteo(
   sorteoId: string,
-  segmentId: string,
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
@@ -128,11 +126,11 @@ export async function uploadManualCodesToSegment(
     method: "manual",
     source: "educator_manual",
     codes: parsed.data.codes,
-    segmentId,
+    sorteoId,
   });
 
   if (result.error) return { error: result.error };
 
   revalidatePath(`/dashboard/sorteos/${sorteoId}/codes`);
-  return { success: `Se cargaron ${result.inserted} códigos a este segmento.` };
+  return { success: `Se cargaron ${result.inserted} códigos a este sorteo.` };
 }

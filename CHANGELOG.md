@@ -51,6 +51,38 @@ y "Mis Premios" para participantes vía magic link. Deploy en Netlify
 - Webhook configurable hacia el CRM de World Binary (`/admin/settings`):
   dispara un POST best-effort por cada giro nuevo.
 
+## v1.3 — Sorteo clásico (rediseño del mecanismo central)
+
+Se reemplazó el mecanismo de "ruleta individual" (cada participante giraba
+al registrarse y ganaba o no en el momento) por un **sorteo clásico**: toda
+la gente se registra durante el tiempo que el sorteo está activo, y el
+educador dispara el sorteo una sola vez para elegir ganadores al azar entre
+todos los inscriptos.
+
+- Registro público simplificado: solo nombre + email, sin ruleta ni
+  resultado individual (`components/public/registration-form.tsx`,
+  `app/api/register/route.ts`, función `register_participant()`).
+- Cada sorteo define `winners_count` (cantidad de ganadores, configurable)
+  tanto al crearlo como al editarlo, desde el panel de educador y de admin.
+- Nueva pantalla "Sortear" (`/dashboard/sorteos/[id]/winners`): el educador
+  aprieta un botón, se anima una ruleta con los nombres de todos los
+  inscriptos y va cayendo en cada ganador en secuencia hasta completar
+  `winners_count`, asignando un código de premio disponible a cada uno
+  (`raffle_winners`, acción `drawWinners`).
+- El sorteo queda bloqueado para repetirse una vez sorteado (`drawn_at`) y
+  pasa a "Finalizado" automáticamente.
+- Se eliminó por completo el editor de segmentos de ruleta
+  (`wheel_segments`) y el endpoint `/api/spin`; los premios ahora se cargan
+  y se listan directo por sorteo (`/dashboard/sorteos/[id]/codes`,
+  `/admin/codes` asigna por sorteo en vez de por segmento).
+- Estadísticas, checklist de primeros pasos, lista global de sorteos y
+  participantes actualizados al nuevo modelo (inscriptos por día en vez de
+  giros, sin "tasa de premio" por giro individual).
+- Migración `0003_raffle_redesign.sql`: agrega `sorteos.winners_count` y
+  `sorteos.drawn_at`, tabla `raffle_winners`, `prize_codes.sorteo_id`
+  (reemplaza `segment_id`), función `register_participant()`; elimina
+  `wheel_segments`, `entries` y `spin_wheel()`.
+
 ## Pendiente / backlog
 
 - Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) en

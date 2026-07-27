@@ -1,12 +1,12 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { WalletUploadForm, SegmentUploadForm } from "@/components/admin/admin-code-forms";
+import { WalletUploadForm, SorteoUploadForm } from "@/components/admin/admin-code-forms";
 
-interface SegmentQueryRow {
+interface SorteoQueryRow {
   id: string;
-  label: string;
-  sorteos: { name: string; profiles: { display_name: string | null } | { display_name: string | null }[] | null } | null;
+  name: string;
+  profiles: { display_name: string | null } | { display_name: string | null }[] | null;
 }
 
 export default async function AdminCodesPage() {
@@ -20,24 +20,23 @@ export default async function AdminCodesPage() {
     .eq("status", "approved")
     .order("display_name");
 
-  const { data: segmentsRaw } = await supabase
-    .from("wheel_segments")
-    .select("id, label, sorteos(name, profiles(display_name))")
-    .eq("is_consolation", false)
-    .order("sort_order");
+  const { data: sorteosRaw } = await supabase
+    .from("sorteos")
+    .select("id, name, profiles(display_name)")
+    .order("created_at", { ascending: false });
 
-  const segments = (segmentsRaw ?? []) as unknown as SegmentQueryRow[];
+  const sorteos = (sorteosRaw ?? []) as unknown as SorteoQueryRow[];
 
   const educatorOptions = (educators ?? []).map((e) => ({
     id: e.id,
     label: e.brand_name ? `${e.display_name} (${e.brand_name})` : e.display_name ?? e.id,
   }));
 
-  const segmentOptions = segments.map((s) => {
-    const profile = Array.isArray(s.sorteos?.profiles) ? s.sorteos?.profiles[0] : s.sorteos?.profiles;
+  const sorteoOptions = sorteos.map((s) => {
+    const profile = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
     return {
       id: s.id,
-      label: `${profile?.display_name ?? "?"} — ${s.sorteos?.name ?? "?"} — ${s.label}`,
+      label: `${profile?.display_name ?? "?"} — ${s.name}`,
     };
   });
 
@@ -47,7 +46,7 @@ export default async function AdminCodesPage() {
         <h1 className="text-2xl font-semibold">Cuentas bono</h1>
         <p className="text-sm text-brand-muted">
           Cargá y distribuí las cuentas bono generadas en el CRM de World Binary hacia los
-          educadores: de antemano a su bolsa general, o directo a un segmento puntual.
+          educadores: de antemano a su bolsa general, o directo a un sorteo puntual.
         </p>
       </div>
 
@@ -56,7 +55,7 @@ export default async function AdminCodesPage() {
           <CardHeader>
             <CardTitle>Distribuir de antemano</CardTitle>
             <CardDescription>
-              El educador después decide a qué sorteo/segmento asignar cada código.
+              El educador después decide a qué sorteo asignar cada código.
             </CardDescription>
           </CardHeader>
           <WalletUploadForm educators={educatorOptions} />
@@ -64,9 +63,9 @@ export default async function AdminCodesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Cargar directo a un sorteo</CardTitle>
-            <CardDescription>Los códigos quedan disponibles inmediatamente en ese segmento.</CardDescription>
+            <CardDescription>Los códigos quedan disponibles inmediatamente en ese sorteo.</CardDescription>
           </CardHeader>
-          <SegmentUploadForm segments={segmentOptions} />
+          <SorteoUploadForm sorteos={sorteoOptions} />
         </Card>
       </div>
     </div>
