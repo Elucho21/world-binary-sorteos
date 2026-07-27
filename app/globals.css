@@ -86,3 +86,64 @@ body {
 .win-pop {
   animation: win-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 180, 0, 0);
+  }
+  50% {
+    box-shadow: 0 0 48px 12px rgba(245, 180, 0, 0.45);
+  }
+}
+
+.wheel-spinning-glow {
+  animation: glow-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes suspense-pulse {
+  0%, 100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.suspense-text {
+  animation: suspense-pulse 0.85s ease-in-out infinite;
+}
+
+@keyframes winner-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.winner-flash {
+  animation: winner-flash 0.7s ease-out forwards;
+}
+
+@keyframes winner-banner-in {
+  0% {
+    transform: scale(0.7) translateY(10px);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.08) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.winner-banner {
+  animation: winner-banner-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
