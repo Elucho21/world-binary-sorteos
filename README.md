@@ -55,25 +55,13 @@ Abrí [http://localhost:3000](http://localhost:3000).
 ### 3. Deploy a Netlify
 
 Ya está deployado y funcionando en **https://sorteos-world-binary.netlify.app**
-(repo: [github.com/Elucho21/world-binary-sorteos](https://github.com/Elucho21/world-binary-sorteos)).
+(repo: [github.com/Elucho21/world-binary-sorteos](https://github.com/Elucho21/world-binary-sorteos),
+**público** — no tiene ningún secreto adentro, las claves están solo en
+variables de entorno de Netlify/Supabase). Auto-deploy en cada push a
+`master` ya está funcionando.
 
-**Importante:** el repo se conectó a mano vía API (no por el wizard normal
-de Netlify), así que el auto-deploy en cada push todavía no dispara solo.
-Después de cada `git push`, hay que disparar el build manualmente con uno
-de estos dos:
-
-```bash
-netlify deploy --prod --trigger
-```
-
-o desde el dashboard: **Deploys → Trigger deploy → Deploy site**. Si en
-algún momento se quiere el auto-deploy real, la forma más simple es
-desvincular y re-vincular el repo desde la propia UI de Netlify (Site
-settings → Build & deploy → Link a different repository), que sí configura
-bien el webhook.
-
-Si alguna vez hay que rearmar esto desde cero en otro sitio Netlify, dos
-cosas no obvias que costó bastante encontrar:
+Si alguna vez hay que rearmar esto desde cero en otro sitio Netlify, estas
+son las cosas no obvias que costó bastante encontrar:
 
 - **`netlify.toml` tiene que declarar `publish = ".next"` explícitamente**
   y el plugin a mano:
@@ -96,10 +84,20 @@ cosas no obvias que costó bastante encontrar:
   Turbopack/webpack). La solución es dejar que Netlify buildee en sus
   propios servidores (Linux) vía Git — nunca buildear localmente en Windows
   y subir ese resultado.
+- **Conectar el repo siempre por el wizard de la UI, nunca a mano por API.**
+  Linkear el repo con un PATCH directo a la API (repo + deploy key SSH)
+  parece funcionar al principio, pero el build queda bloqueado con "Build
+  blocked: This commit is from an unrecognized Git contributor" en
+  cualquier repo privado — falta la asociación real con la GitHub App de
+  Netlify, que solo se arma bien pasando por **Site settings → Build &
+  deploy → Manage repository → Unlink**, y después volviendo a linkear
+  eligiendo el repo de la lista (no escribiéndolo a mano). Esto también es
+  lo que activa el auto-deploy en cada push.
 
 Para un proyecto nuevo desde cero:
 1. Conectá el repo a Netlify desde la UI (Site settings → Build & deploy →
-   Link repository) — el wizard configura bien el publish dir solo.
+   Link repository) — el wizard configura bien el publish dir, la GitHub
+   App y el webhook solo.
 2. Cargá las mismas variables de entorno de `.env.local` en
    **Site settings → Environment variables** (usá un proyecto Supabase de
    producción separado del de desarrollo).
