@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createBanner, type FormState } from "@/app/(admin)/admin/banners/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { DateTimeLocalInput } from "@/components/ui/datetime-local-input";
 
 export function BannerForm() {
   const [state, formAction, pending] = useActionState<FormState, FormData>(createBanner, undefined);
@@ -34,14 +35,8 @@ export function BannerForm() {
         <Label htmlFor="linkUrl">URL de destino (opcional)</Label>
         <Input id="linkUrl" name="linkUrl" placeholder="https://worldbinary.pro/tv" />
       </div>
-      <div>
-        <Label htmlFor="startsAt">Desde (opcional)</Label>
-        <Input id="startsAt" name="startsAt" type="datetime-local" />
-      </div>
-      <div>
-        <Label htmlFor="endsAt">Hasta (opcional)</Label>
-        <Input id="endsAt" name="endsAt" type="datetime-local" />
-      </div>
+      <DateTimeLocalInput id="startsAt" name="startsAt" label="Desde (opcional)" />
+      <DateTimeLocalInput id="endsAt" name="endsAt" label="Hasta (opcional)" />
       {state?.error && <p className="text-sm text-brand-danger sm:col-span-2">{state.error}</p>}
       <div className="sm:col-span-2">
         <Button type="submit" disabled={pending}>

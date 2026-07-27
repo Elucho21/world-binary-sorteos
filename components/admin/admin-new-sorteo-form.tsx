@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { adminCreateSorteo, type FormState } from "@/app/(admin)/admin/sorteos/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { DateTimeLocalInput } from "@/components/ui/datetime-local-input";
 
 interface EducatorOption {
   id: string;
@@ -47,14 +48,8 @@ export function AdminNewSorteoForm({ educators }: { educators: EducatorOption[] 
         <Textarea id="description" name="description" rows={3} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="startsAt">Inicio (opcional)</Label>
-          <Input id="startsAt" name="startsAt" type="datetime-local" />
-        </div>
-        <div>
-          <Label htmlFor="endsAt">Fin (opcional)</Label>
-          <Input id="endsAt" name="endsAt" type="datetime-local" />
-        </div>
+        <DateTimeLocalInput id="startsAt" name="startsAt" label="Inicio (opcional)" />
+        <DateTimeLocalInput id="endsAt" name="endsAt" label="Fin (opcional)" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

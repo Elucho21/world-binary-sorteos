@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createSorteo, type FormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { DateTimeLocalInput } from "@/components/ui/datetime-local-input";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 export default function NewSorteoPage() {
@@ -36,14 +37,8 @@ export default function NewSorteoPage() {
             <Textarea id="description" name="description" rows={3} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startsAt">Inicio (opcional)</Label>
-              <Input id="startsAt" name="startsAt" type="datetime-local" />
-            </div>
-            <div>
-              <Label htmlFor="endsAt">Fin (opcional)</Label>
-              <Input id="endsAt" name="endsAt" type="datetime-local" />
-            </div>
+            <DateTimeLocalInput id="startsAt" name="startsAt" label="Inicio (opcional)" />
+            <DateTimeLocalInput id="endsAt" name="endsAt" label="Fin (opcional)" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

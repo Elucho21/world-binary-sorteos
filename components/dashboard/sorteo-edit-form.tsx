@@ -4,12 +4,8 @@ import { useActionState } from "react";
 import { updateSorteo, type FormState } from "@/app/(educator)/dashboard/sorteos/actions";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
+import { DateTimeLocalInput } from "@/components/ui/datetime-local-input";
 import type { Sorteo } from "@/types/database.types";
-
-function toLocalInput(value: string | null) {
-  if (!value) return "";
-  return new Date(value).toISOString().slice(0, 16);
-}
 
 export function SorteoEditForm({ sorteo }: { sorteo: Sorteo }) {
   const action = updateSorteo.bind(null, sorteo.id);
@@ -33,24 +29,8 @@ export function SorteoEditForm({ sorteo }: { sorteo: Sorteo }) {
         <Textarea id="description" name="description" rows={3} defaultValue={sorteo.description ?? ""} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="startsAt">Inicio</Label>
-          <Input
-            id="startsAt"
-            name="startsAt"
-            type="datetime-local"
-            defaultValue={toLocalInput(sorteo.starts_at)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="endsAt">Fin</Label>
-          <Input
-            id="endsAt"
-            name="endsAt"
-            type="datetime-local"
-            defaultValue={toLocalInput(sorteo.ends_at)}
-          />
-        </div>
+        <DateTimeLocalInput id="startsAt" name="startsAt" label="Inicio" defaultValueIso={sorteo.starts_at} />
+        <DateTimeLocalInput id="endsAt" name="endsAt" label="Fin" defaultValueIso={sorteo.ends_at} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
