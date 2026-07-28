@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DashboardHomeTour } from "@/components/dashboard/dashboard-home-tour";
 import type { SorteoStatus } from "@/types/database.types";
 
 const statusTone: Record<SorteoStatus, "neutral" | "success" | "warning" | "danger"> = {
@@ -51,18 +52,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <DashboardHomeTour autoStart={!hasSorteo} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Mis sorteos</h1>
           <p className="text-sm text-brand-muted">Creá y gestioná tus sorteos de ruleta.</p>
         </div>
-        <Link href="/dashboard/sorteos/new">
+        <Link href="/dashboard/sorteos/new" data-tour="new-sorteo-btn">
           <Button>Nuevo sorteo</Button>
         </Link>
       </div>
 
       {showChecklist && (
-        <Card>
+        <Card data-tour="checklist">
           <CardTitle>Primeros pasos</CardTitle>
           <CardDescription className="mt-1">
             Seguí estos pasos para dejar tu sorteo listo para compartir.

@@ -40,6 +40,23 @@ export default async function PublicSorteoPage({ params }: { params: Promise<{ s
           </p>
         </div>
 
+        {!alreadyDrawn && (
+          <div className="w-full rounded-lg border border-brand-border bg-brand-surface p-4 text-left text-sm text-brand-muted">
+            <p className="font-medium text-brand-text">Cómo funciona</p>
+            <ol className="mt-2 list-inside list-decimal space-y-1.5">
+              <li>Te registrás con tu nombre y email.</li>
+              <li>
+                {educatorLabel} sortea {winnersCount > 1 ? `${winnersCount} ganadores` : "1 ganador"}{" "}
+                entre todos los inscriptos.
+              </li>
+              <li>
+                Si ganás, te avisamos y vas a ver tu premio en <strong>Mis Premios</strong> — desde
+                ahí lo canjeás con {educatorLabel} o con World Binary.
+              </li>
+            </ol>
+          </div>
+        )}
+
         {alreadyDrawn ? (
           <p className="text-brand-muted">Este sorteo ya cerró y se sorteó a los ganadores.</p>
         ) : (

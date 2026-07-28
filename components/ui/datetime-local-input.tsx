@@ -22,17 +22,24 @@ export function DateTimeLocalInput({
   name,
   label,
   defaultValueIso,
+  info,
 }: {
   id: string;
   name: string;
   label: string;
   defaultValueIso?: string | null;
+  info?: React.ReactNode;
 }) {
   const [local, setLocal] = useState(() => toLocalInputValue(defaultValueIso));
 
   return (
     <div>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="mb-1.5 flex items-center gap-1">
+        <Label htmlFor={id} className="mb-0">
+          {label}
+        </Label>
+        {info}
+      </div>
       <Input id={id} type="datetime-local" value={local} onChange={(e) => setLocal(e.target.value)} />
       <input type="hidden" name={name} value={toIsoValue(local)} />
     </div>

@@ -158,9 +158,15 @@ export function DrawFlow({
         )}
 
         {!done && (
-          <Button size="lg" onClick={handleDraw} disabled={drawing || spinning || participants.length === 0}>
-            {drawing ? "Preparando..." : spinning ? "Girando..." : "Sortear"}
-          </Button>
+          <>
+            <p className="text-xs text-brand-danger">
+              Esta acción es irreversible: una vez que gira la ruleta no se puede deshacer ni
+              repetir el sorteo.
+            </p>
+            <Button size="lg" onClick={handleDraw} disabled={drawing || spinning || participants.length === 0}>
+              {drawing ? "Preparando..." : spinning ? "Girando..." : "Sortear"}
+            </Button>
+          </>
         )}
         {error && <p className="text-sm text-brand-danger">{error}</p>}
         {participants.length === 0 && !done && (

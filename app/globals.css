@@ -147,3 +147,18 @@ body {
 .winner-banner {
   animation: winner-banner-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+@keyframes tour-highlight-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tour-highlight-in {
+  animation: tour-highlight-in 0.25s ease-out;
+}

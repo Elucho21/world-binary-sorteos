@@ -51,7 +51,7 @@ export async function createSorteo(_prev: FormState, formData: FormData): Promis
   }
 
   revalidatePath("/dashboard");
-  redirect(`/dashboard/sorteos/${data.id}`);
+  redirect(`/dashboard/sorteos/${data.id}?new=1`);
 }
 
 export async function updateSorteo(sorteoId: string, _prev: FormState, formData: FormData): Promise<FormState> {

@@ -2,6 +2,7 @@ import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { ManualCodesForm, FileCodesForm } from "@/components/dashboard/code-upload-forms";
 
 export default async function CodesPage() {
@@ -37,19 +38,41 @@ export default async function CodesPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card className="p-4 text-center">
           <p className="text-2xl font-semibold">{counts.unassigned}</p>
-          <p className="text-xs text-brand-muted">Sin asignar</p>
+          <p className="flex items-center justify-center gap-1 text-xs text-brand-muted">
+            Sin asignar
+            <InfoTooltip label="Ayuda sobre Sin asignar">
+              Códigos que cargaste pero todavía no asignaste a ningún sorteo específico. Podés
+              asignarlos desde Premios en cada sorteo.
+            </InfoTooltip>
+          </p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-2xl font-semibold">{counts.available}</p>
-          <p className="text-xs text-brand-muted">Disponibles en sorteo</p>
+          <p className="flex items-center justify-center gap-1 text-xs text-brand-muted">
+            Disponibles en sorteo
+            <InfoTooltip label="Ayuda sobre Disponibles en sorteo">
+              Códigos ya asignados a un sorteo, esperando a que se sortee para salir premiados.
+            </InfoTooltip>
+          </p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-2xl font-semibold">{counts.issued}</p>
-          <p className="text-xs text-brand-muted">Emitidos</p>
+          <p className="flex items-center justify-center gap-1 text-xs text-brand-muted">
+            Emitidos
+            <InfoTooltip label="Ayuda sobre Emitidos">
+              Códigos que ya salieron sorteados y le pertenecen a un ganador — todavía no fueron
+              canjeados.
+            </InfoTooltip>
+          </p>
         </Card>
         <Card className="p-4 text-center">
           <p className="text-2xl font-semibold">{counts.redeemed}</p>
-          <p className="text-xs text-brand-muted">Canjeados</p>
+          <p className="flex items-center justify-center gap-1 text-xs text-brand-muted">
+            Canjeados
+            <InfoTooltip label="Ayuda sobre Canjeados">
+              Códigos que el ganador ya usó/reclamó con vos o con World Binary.
+            </InfoTooltip>
+          </p>
         </Card>
       </div>
 

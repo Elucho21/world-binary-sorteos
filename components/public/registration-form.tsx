@@ -71,7 +71,8 @@ export function RegistrationForm({
           {winnersCount > 1
             ? `${educatorLabel} va a sortear ${winnersCount} ganadores entre todos los inscriptos.`
             : `${educatorLabel} va a sortear 1 ganador entre todos los inscriptos.`}{" "}
-          Vas a poder ver si ganaste en{" "}
+          Si ganás, vas a recibir una cuenta bono — un beneficio que canjeás con {educatorLabel} o
+          con World Binary. Vas a poder ver si ganaste en{" "}
           <a href="/mis-premios" className="text-brand-primary hover:underline">
             Mis Premios
           </a>

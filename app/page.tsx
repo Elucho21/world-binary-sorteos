@@ -18,20 +18,27 @@ export default function Home() {
           </h1>
           <p className="mx-auto max-w-2xl text-brand-muted">
             Creá tu sorteo, cargá tus cuentas bono como premio, y compartí el link con tu
-            comunidad. Nosotros nos encargamos del branding, el registro de participantes y el
-            sorteo en vivo.
+            comunidad de trading. Nosotros nos encargamos del branding, el registro de
+            participantes, el sorteo en vivo con ruleta y el seguimiento de qué códigos ya se
+            canjearon — vos solo mandás el link y mirás cómo crece tu comunidad.
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href="/signup">
-            <Button size="lg">Crear cuenta de educador</Button>
-          </Link>
-          <Link href="/mis-premios">
-            <Button size="lg" variant="secondary">
-              Ya participé, ver mis premios
-            </Button>
-          </Link>
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup">
+              <Button size="lg">Crear cuenta de educador</Button>
+            </Link>
+            <Link href="/mis-premios">
+              <Button size="lg" variant="secondary">
+                Ya participé, ver mis premios
+              </Button>
+            </Link>
+          </div>
+          <p className="text-xs text-brand-muted">
+            Gratis para empezar. Tu cuenta queda sujeta a aprobación de World Binary antes de
+            publicar tu primer sorteo.
+          </p>
         </div>
 
         <div className="grid w-full gap-4 pt-10 text-left sm:grid-cols-3">

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import QRCode from "qrcode";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { SorteoEditForm } from "@/components/dashboard/sorteo-edit-form";
 import { SorteoStatusButtons } from "@/components/dashboard/sorteo-status-buttons";
+import { SorteoDetailTour } from "@/components/dashboard/sorteo-detail-tour";
 import { ConfirmButton } from "@/components/dashboard/delete-button";
 import { ShareCopyButton } from "@/components/dashboard/share-copy-button";
 import { deleteSorteo, cloneSorteo } from "../actions";
@@ -48,6 +51,9 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-6">
+      <Suspense fallback={null}>
+        <SorteoDetailTour />
+      </Suspense>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -65,36 +71,65 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
             {siteUrl}/s/{sorteo.slug}
           </a>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/sorteos/${id}/codes`}>
-            <Button variant="secondary" size="sm">
-              Premios ({prizeCount ?? 0})
-            </Button>
-          </Link>
-          <Link href={`/dashboard/sorteos/${id}/participants`}>
-            <Button variant="secondary" size="sm">
-              Participantes ({participantCount ?? 0})
-            </Button>
-          </Link>
-          <Link href={`/dashboard/sorteos/${id}/winners`}>
-            <Button variant={sorteo.drawn_at ? "secondary" : "primary"} size="sm">
-              {sorteo.drawn_at ? "Ver ganadores" : "Sortear"}
-            </Button>
-          </Link>
-          <Link href={`/dashboard/sorteos/${id}/stats`}>
-            <Button variant="secondary" size="sm">
-              Estadísticas
-            </Button>
-          </Link>
-          <form action={cloneSorteo.bind(null, id)}>
-            <Button type="submit" variant="secondary" size="sm">
-              Duplicar
-            </Button>
-          </form>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1" data-tour="premios-btn">
+            <Link href={`/dashboard/sorteos/${id}/codes`}>
+              <Button variant="secondary" size="sm">
+                Premios ({prizeCount ?? 0})
+              </Button>
+            </Link>
+            <InfoTooltip label="Ayuda sobre Premios">
+              Cargá acá las cuentas bono que se van a repartir entre los ganadores de este sorteo.
+            </InfoTooltip>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Link href={`/dashboard/sorteos/${id}/participants`}>
+              <Button variant="secondary" size="sm">
+                Participantes ({participantCount ?? 0})
+              </Button>
+            </Link>
+            <InfoTooltip label="Ayuda sobre Participantes">
+              Todos los que se registraron en tu link público, con nombre y email.
+            </InfoTooltip>
+          </span>
+          <span className="inline-flex items-center gap-1" data-tour="sortear-btn">
+            <Link href={`/dashboard/sorteos/${id}/winners`}>
+              <Button variant={sorteo.drawn_at ? "secondary" : "primary"} size="sm">
+                {sorteo.drawn_at ? "Ver ganadores" : "Sortear"}
+              </Button>
+            </Link>
+            <InfoTooltip label="Ayuda sobre Sortear">
+              Sortear es una acción única y no se puede deshacer ni repetir: una vez que gira la
+              ruleta, los ganadores y sus códigos quedan fijos para siempre. Asegurate de tener
+              cargados suficientes premios antes de sortear.
+            </InfoTooltip>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Link href={`/dashboard/sorteos/${id}/stats`}>
+              <Button variant="secondary" size="sm">
+                Estadísticas
+              </Button>
+            </Link>
+            <InfoTooltip label="Ayuda sobre Estadísticas">
+              Cuántos se registraron, cuándo, y cómo viene tu sorteo comparado con tus otros
+              sorteos.
+            </InfoTooltip>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <form action={cloneSorteo.bind(null, id)}>
+              <Button type="submit" variant="secondary" size="sm">
+                Duplicar
+              </Button>
+            </form>
+            <InfoTooltip label="Ayuda sobre Duplicar">
+              Crea un sorteo nuevo con los mismos datos (nombre, fechas, cantidad de ganadores)
+              pero sin participantes ni premios.
+            </InfoTooltip>
+          </span>
         </div>
       </div>
 
-      <Card>
+      <Card data-tour="estado-card">
         <CardHeader>
           <CardTitle>Estado del sorteo</CardTitle>
           <CardDescription>
@@ -104,7 +139,7 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
         <SorteoStatusButtons sorteoId={id} currentStatus={sorteo.status} />
       </Card>
 
-      <Card>
+      <Card data-tour="share-card">
         <CardHeader>
           <CardTitle>Compartir</CardTitle>
           <CardDescription>QR y texto listo para mandar por WhatsApp o Instagram.</CardDescription>

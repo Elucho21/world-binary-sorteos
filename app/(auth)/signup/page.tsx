@@ -22,9 +22,16 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle>Crear cuenta de educador/IB</CardTitle>
             <CardDescription>
-              Tu cuenta queda pendiente de aprobación por World Binary antes de poder publicar
-              sorteos.
+              Sorteá cuentas bono entre los miembros de tu comunidad: nosotros armamos la página
+              de registro, la ruleta en vivo y el seguimiento de premios — vos solo compartís el
+              link. Tu cuenta queda pendiente de aprobación por World Binary antes de poder
+              publicar sorteos.
             </CardDescription>
+            <ul className="mt-3 space-y-1 text-sm text-brand-muted">
+              <li>· Link de registro con tu marca</li>
+              <li>· Ruleta en vivo con animación y sonido</li>
+              <li>· Seguimiento de códigos canjeados, todo en un panel</li>
+            </ul>
           </CardHeader>
           {state?.message ? (
             <p className="text-sm text-brand-success">{state.message}</p>

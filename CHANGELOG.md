@@ -83,6 +83,28 @@ todos los inscriptos.
   (reemplaza `segment_id`), función `register_participant()`; elimina
   `wheel_segments`, `entries` y `spin_wheel()`.
 
+## v1.4 — UX, onboarding guiado e íconos de información
+
+- Tour guiado interactivo (spotlight + popover paso a paso, hecho a mano
+  sin librerías) que se dispara solo una vez: uno en `/dashboard` (crear
+  sorteo, cuentas bono, equipo) y otro en el detalle de un sorteo recién
+  creado (compartir, premios, activar, sortear). Botón "¿Cómo funciona?"
+  para volver a verlo.
+- Íconos de información (tap/click, pensado para mobile) en los campos y
+  botones más confusos del panel de educador: slug, fechas, cantidad de
+  ganadores, máximo de participantes, los 5 botones del detalle de sorteo,
+  y los 4 estados de código en "Cuentas bono". El más importante: "Sortear"
+  ahora deja explícito que es una acción irreversible (antes no estaba
+  documentado en ningún lado), con una advertencia siempre visible además
+  del tooltip en la pantalla real del sorteo.
+- Copy más profundo del lado del trader: `/s/[slug]` ahora explica "cómo
+  funciona" el sorteo en 3 pasos antes del formulario; la confirmación de
+  registro explica qué es una cuenta bono; `/mis-premios` le dice a cada
+  ganador con premio pendiente a quién contactar para canjearlo.
+- Landing y `/signup` con propuesta de valor más concreta para el
+  educador (qué resuelve la plataforma día a día, no solo qué features
+  tiene).
+
 ## Pendiente / backlog
 
 - Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) en

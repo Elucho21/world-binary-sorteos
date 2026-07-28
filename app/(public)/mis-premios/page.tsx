@@ -28,7 +28,7 @@ export default async function MisPremiosPage() {
           <h1 className="text-3xl font-bold tracking-tight">Mis Premios</h1>
           <p className="mt-2 text-brand-muted">
             Ingresá tu email y te mandamos un link para ver todos los premios que ganaste, con
-            cualquier educador.
+            cualquier educador, y qué hacer para canjearlos.
           </p>
         </div>
 
@@ -74,24 +74,36 @@ async function ParticipantEntries({ email }: { email: string }) {
         </Card>
       )}
 
-      {entries.map((entry) => (
-        <Card key={entry.entry_id} className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-medium">{entry.segment_label}</p>
-            <p className="text-xs text-brand-muted">
-              {entry.sorteo_name} — {entry.educator_brand_name || entry.educator_display_name}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {entry.code && <span className="font-mono text-sm">{entry.code}</span>}
-            {entry.code_status && (
-              <Badge tone={entry.code_status === "redeemed" ? "success" : "warning"}>
-                {entry.code_status === "redeemed" ? "Canjeado" : "Pendiente de canje"}
-              </Badge>
+      {entries.map((entry) => {
+        const educatorLabel = entry.educator_brand_name || entry.educator_display_name;
+        return (
+          <Card key={entry.entry_id} className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">{entry.segment_label}</p>
+                <p className="text-xs text-brand-muted">
+                  {entry.sorteo_name} — {educatorLabel}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {entry.code && <span className="font-mono text-sm">{entry.code}</span>}
+                {entry.code_status && (
+                  <Badge tone={entry.code_status === "redeemed" ? "success" : "warning"}>
+                    {entry.code_status === "redeemed" ? "Canjeado" : "Pendiente de canje"}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            {entry.code_status && entry.code_status !== "redeemed" && (
+              <p className="text-xs text-brand-muted">
+                Para canjear tu cuenta bono, contactá a <strong>{educatorLabel}</strong> por los
+                mismos medios donde te enteraste del sorteo (WhatsApp/Instagram), o escribí a
+                World Binary. Vas a necesitar este código.
+              </p>
             )}
-          </div>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 }
