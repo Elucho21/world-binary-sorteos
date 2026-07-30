@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,9 @@ const statusLabel: Record<SorteoStatus, string> = {
 
 export default async function DashboardPage() {
   const profile = await requireApprovedEducator();
+  if (profile.role === "super_admin") {
+    redirect("/admin/sorteos");
+  }
   const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
   const { data: sorteos } = await supabase
