@@ -164,6 +164,13 @@ export type MyEntry = {
 
 export type RegisterParticipantResult = {
   already_registered: boolean;
+  participant_id: string;
+};
+
+export type CheckParticipantPrizeResult = {
+  drawn: boolean;
+  won: boolean;
+  code: string | null;
 };
 
 export type Database = {
@@ -188,6 +195,10 @@ export type Database = {
       register_participant: {
         Args: { p_slug: string; p_name: string; p_email: string; p_honeypot?: string; p_ip_hash?: string | null };
         Returns: RegisterParticipantResult;
+      };
+      check_participant_prize: {
+        Args: { p_slug: string; p_participant_id: string };
+        Returns: CheckParticipantPrizeResult;
       };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
     };

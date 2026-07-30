@@ -32,6 +32,25 @@ export function playTick(ctx: AudioContext | null, pitch = 700) {
   }
 }
 
+export function playCountdownBeep(ctx: AudioContext | null, step: 3 | 2 | 1 | 0) {
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = step === 0 ? "sine" : "square";
+    osc.frequency.value = step === 0 ? 880 : 440;
+    const start = ctx.currentTime;
+    const duration = step === 0 ? 0.35 : 0.15;
+    gain.gain.setValueAtTime(0.12, start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  } catch {
+    // Autoplay/audio blocked — silently skip, it's a non-essential flourish.
+  }
+}
+
 export function playWinChime(ctx: AudioContext | null) {
   if (!ctx) return;
   try {

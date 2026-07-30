@@ -105,6 +105,28 @@ todos los inscriptos.
   educador (qué resuelve la plataforma día a día, no solo qué features
   tiene).
 
+## v1.5 — Ruleta más épica, música, cuenta regresiva y premio sin login
+
+- Animación del sorteo ~50% más larga (4.8s por ganador) con una
+  desaceleración final más marcada, y un cartel que muestra en vivo "a
+  quién le tocaría ahora" mientras gira, con zoom/pulso en el último tramo
+  del giro.
+- Cuenta regresiva 3-2-1 antes del primer ganador cuando hay varios
+  premios (no se repite en cada uno).
+- 4 estilos de música sintetizada para elegir antes de sortear (alegre,
+  épica, gamer, terror) — mismo método de tonos que ya usábamos para el
+  tic-tic y la fanfarria, sin archivos de audio.
+- Los participantes ahora pueden enterarse si ganaron sin depender del
+  mail: al registrarse, su navegador guarda un identificador propio: si
+  vuelven a abrir el mismo link en el mismo dispositivo después del
+  sorteo (o se quedan esperando en la página), ven directo si ganaron y
+  su código — como complemento a Mis Premios, no en su reemplazo.
+- Migración `0004_participant_reveal.sql`: `register_participant()` ahora
+  también devuelve el id del participante; nueva función
+  `check_participant_prize()` para consultar el resultado propio sin login.
+- Backlog anotado: ruleta en vivo visible para todos los espectadores
+  (vía Supabase Realtime) — pospuesto a pedido tuyo esta vuelta.
+
 ## Pendiente / backlog
 
 - Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) en
@@ -114,3 +136,6 @@ todos los inscriptos.
 - Página pública de "educadores destacados".
 - Loop de referidos (giro extra por traer un amigo).
 - Soporte multi-idioma (descartado por ahora).
+- Ruleta en vivo visible para todos los espectadores en tiempo real (vía
+  Supabase Realtime), sincronizada con el momento en que el educador
+  sortea.

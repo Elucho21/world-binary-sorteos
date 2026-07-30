@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/brand/site-header";
 import { SiteFooter } from "@/components/brand/site-footer";
 import { BannerStrip } from "@/components/brand/banner-strip";
 import { RegistrationForm } from "@/components/public/registration-form";
+import { PrizeRevealCheck } from "@/components/public/prize-reveal-check";
 
 export default async function PublicSorteoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -57,11 +58,10 @@ export default async function PublicSorteoPage({ params }: { params: Promise<{ s
           </div>
         )}
 
-        {alreadyDrawn ? (
-          <p className="text-brand-muted">Este sorteo ya cerró y se sorteó a los ganadores.</p>
-        ) : (
+        {!alreadyDrawn && (
           <RegistrationForm slug={slug} educatorLabel={educatorLabel} winnersCount={winnersCount} />
         )}
+        <PrizeRevealCheck slug={slug} alreadyDrawn={alreadyDrawn} educatorLabel={educatorLabel} />
 
         {banners && banners.length > 0 && <BannerStrip banners={banners} />}
       </main>

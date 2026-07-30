@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TurnstileWidget } from "@/components/wheel/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { saveParticipantId } from "@/lib/participant-storage";
 import type { RegisterParticipantResult } from "@/types/database.types";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -52,6 +53,7 @@ export function RegistrationForm({
       }
 
       const result = data as RegisterParticipantResult;
+      if (result.participant_id) saveParticipantId(slug, result.participant_id);
       setAlreadyRegistered(result.already_registered);
       setPhase("done");
       setSubmitting(false);

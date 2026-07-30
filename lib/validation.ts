@@ -53,3 +53,8 @@ export const registrationSchema = z.object({
   honeypot: z.string().max(0).optional().or(z.literal("")),
   turnstileToken: z.string().optional(),
 });
+
+export const checkPrizeSchema = z.object({
+  slug: z.string().trim().min(1),
+  participantId: z.string().trim().uuid(),
+});

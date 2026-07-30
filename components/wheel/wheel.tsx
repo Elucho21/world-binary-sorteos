@@ -58,7 +58,7 @@ export function Wheel({
         viewBox={`0 0 ${size} ${size}`}
         style={{
           transform: `rotate(${rotationDeg}deg)`,
-          transition: transitionMs ? `transform ${transitionMs}ms cubic-bezier(0.11, 0.79, 0.15, 0.99)` : undefined,
+          transition: transitionMs ? `transform ${transitionMs}ms cubic-bezier(0.08, 0.9, 0.05, 1)` : undefined,
         }}
       >
         <circle cx={cx} cy={cy} r={r + 3} fill="var(--brand-border)" />
