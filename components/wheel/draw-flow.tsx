@@ -11,9 +11,9 @@ import { MUSIC_TRACKS, playMusicLoop, stopMusic, type MusicTrackId } from "@/lib
 import { drawWinners, type DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
 const COLORS = ["#2AA76D", "#F5B400", "#EF4444", "#8B5CF6", "#06B6D4", "#F97316", "#EC4899", "#22D3EE"];
-const SPIN_MS = 4800;
+const SPIN_MS = 7200;
 const REVEAL_PAUSE_MS = 2000;
-const EXTRA_TURNS = 7;
+const EXTRA_TURNS = 10;
 const FINAL_PHASE_FRACTION = 0.8;
 const COUNTDOWN_STEPS: (3 | 2 | 1 | 0)[] = [3, 2, 1, 0];
 
