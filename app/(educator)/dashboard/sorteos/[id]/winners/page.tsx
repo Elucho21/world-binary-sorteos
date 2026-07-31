@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { DrawFlow } from "@/components/wheel/draw-flow";
 import type { DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
@@ -13,7 +14,7 @@ interface WinnerRow {
 
 export default async function SorteoWinnersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireApprovedEducator();
+  const profile = await requireApprovedEducator();
   const supabase = await createClient();
 
   const { data: sorteo } = await supabase
@@ -44,8 +45,18 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
     });
   }
 
+  const rootHref = profile.role === "super_admin" ? "/admin/sorteos" : "/dashboard";
+  const rootLabel = profile.role === "super_admin" ? "Sorteos" : "Mis sorteos";
+
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: rootLabel, href: rootHref },
+          { label: sorteo.name, href: `/dashboard/sorteos/${id}` },
+          { label: "Ganadores" },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Sorteo — {sorteo.name}</h1>
         <p className="text-sm text-brand-muted">

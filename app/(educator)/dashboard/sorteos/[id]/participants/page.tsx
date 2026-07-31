@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { ParticipantsTable, type ParticipantRow } from "@/components/dashboard/participants-table";
 
 interface WinnerRow {
@@ -11,11 +12,14 @@ interface WinnerRow {
 
 export default async function ParticipantsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireApprovedEducator();
+  const profile = await requireApprovedEducator();
   const supabase = await createClient();
 
   const { data: sorteo } = await supabase.from("sorteos").select("id, name").eq("id", id).single();
   if (!sorteo) notFound();
+
+  const rootHref = profile.role === "super_admin" ? "/admin/sorteos" : "/dashboard";
+  const rootLabel = profile.role === "super_admin" ? "Sorteos" : "Mis sorteos";
 
   const [{ data: participantsData }, { data: winnersData }] = await Promise.all([
     supabase
@@ -49,6 +53,13 @@ export default async function ParticipantsPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: rootLabel, href: rootHref },
+          { label: sorteo.name, href: `/dashboard/sorteos/${id}` },
+          { label: "Participantes" },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Participantes — {sorteo.name}</h1>
         <p className="text-sm text-brand-muted">{participants.length} inscriptos.</p>

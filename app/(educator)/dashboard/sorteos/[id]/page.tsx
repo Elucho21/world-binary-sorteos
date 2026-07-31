@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { SorteoEditForm } from "@/components/dashboard/sorteo-edit-form";
 import { SorteoStatusButtons } from "@/components/dashboard/sorteo-status-buttons";
 import { SorteoDetailTour } from "@/components/dashboard/sorteo-detail-tour";
@@ -25,11 +26,14 @@ const statusLabel: Record<SorteoStatus, string> = {
 
 export default async function SorteoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireApprovedEducator();
+  const profile = await requireApprovedEducator();
   const supabase = await createClient();
 
   const { data: sorteo } = await supabase.from("sorteos").select("*").eq("id", id).single();
   if (!sorteo) notFound();
+
+  const rootHref = profile.role === "super_admin" ? "/admin/sorteos" : "/dashboard";
+  const rootLabel = profile.role === "super_admin" ? "Sorteos" : "Mis sorteos";
 
   const [{ count: participantCount }, { count: prizeCount }] = await Promise.all([
     supabase.from("participants").select("id", { count: "exact", head: true }).eq("sorteo_id", id),
@@ -54,6 +58,7 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
       <Suspense fallback={null}>
         <SorteoDetailTour />
       </Suspense>
+      <Breadcrumbs items={[{ label: rootLabel, href: rootHref }, { label: sorteo.name }]} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

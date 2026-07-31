@@ -21,6 +21,11 @@ export async function login(
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error || !data.user) {
+    if (error?.code === "email_not_confirmed" || error?.message?.toLowerCase().includes("email not confirmed")) {
+      return {
+        error: "Todavía no fuiste aprobado como educador/IB. Te avisamos por mail apenas te aprobemos.",
+      };
+    }
     return { error: "Email o contraseña incorrectos." };
   }
 
@@ -60,7 +65,7 @@ export async function signup(
   if (!data.session) {
     return {
       message:
-        "Te enviamos un email para confirmar tu cuenta. Confirmá y después iniciá sesión.",
+        "¡Listo! Ya creamos tu cuenta. Vas a poder ingresar en cuanto te aprobemos como educador/IB — te avisamos apenas esté listo.",
     };
   }
 

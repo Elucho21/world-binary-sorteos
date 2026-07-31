@@ -127,6 +127,29 @@ todos los inscriptos.
 - Backlog anotado: ruleta en vivo visible para todos los espectadores
   (vía Supabase Realtime) — pospuesto a pedido tuyo esta vuelta.
 
+## v1.6 — Filtro de educadores, breadcrumbs y arreglo del cuello de botella de aprobación
+
+- Filtro Todos/Aprobados/Rechazados en la lista de "Todos los educadores"
+  de `/admin/educators` (sin nueva query, filtro client-side).
+- Se sacó una vuelta de red de más en 4 páginas (`/admin/stats`,
+  `/admin/codes`, `/dashboard`, `/dashboard/sorteos/[id]/codes`)
+  paralelizando queries que eran independientes entre sí pero se pedían
+  una por una.
+- Breadcrumbs nuevos en toda la sección de un sorteo (detalle, premios,
+  participantes, ganadores, estadísticas) y en `/admin/sorteos/new` — el
+  primer nivel del camino es consciente del rol: un super admin que entra
+  desde `/admin/sorteos` ve "Sorteos" y vuelve directo ahí en cualquier
+  profundidad, en vez de depender del link "Mis sorteos" que lo mandaba
+  por `/dashboard` primero.
+- Fix del cuello de botella "confirmá tu email": como el envío de mail
+  real todavía no está conectado, un educador nuevo quedaba sin ninguna
+  salida esperando un mail que nunca llega. Ahora, al aprobar a un
+  educador desde `/admin/educators`, su email se confirma automáticamente
+  (vía el cliente de servicio de Supabase) y puede ingresar al toque; si
+  intenta ingresar antes de ser aprobado, ve un error claro en vez de
+  "contraseña incorrecta"; y el mensaje post-registro ya no promete un
+  mail de confirmación, con un botón directo a Ingresar.
+
 ## Pendiente / backlog
 
 - Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) en

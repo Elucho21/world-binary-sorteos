@@ -34,7 +34,14 @@ export default function SignupPage() {
             </ul>
           </CardHeader>
           {state?.message ? (
-            <p className="text-sm text-brand-success">{state.message}</p>
+            <div className="space-y-4">
+              <p className="text-sm text-brand-success">{state.message}</p>
+              <Link href="/login">
+                <Button type="button" className="w-full">
+                  Ir a Ingresar
+                </Button>
+              </Link>
+            </div>
           ) : (
             <form action={formAction} className="space-y-4">
               <div>

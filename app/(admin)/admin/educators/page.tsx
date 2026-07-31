@@ -1,23 +1,8 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { PendingEducatorsList } from "@/components/admin/pending-educators-list";
-import { setEducatorStatus } from "./actions";
-import type { ProfileStatus } from "@/types/database.types";
-
-const statusTone: Record<ProfileStatus, "warning" | "success" | "danger"> = {
-  pending: "warning",
-  approved: "success",
-  rejected: "danger",
-};
-
-const statusLabel: Record<ProfileStatus, string> = {
-  pending: "Pendiente",
-  approved: "Aprobado",
-  rejected: "Rechazado",
-};
+import { EducatorsList } from "@/components/admin/educators-list";
 
 export default async function AdminEducatorsPage() {
   await requireSuperAdmin();
@@ -52,23 +37,7 @@ export default async function AdminEducatorsPage() {
           <CardTitle>Todos los educadores</CardTitle>
           <CardDescription>{rest.length} cuentas ya revisadas.</CardDescription>
         </CardHeader>
-        <div className="space-y-2">
-          {rest.map((educator) => (
-            <div key={educator.id} className="flex items-center justify-between border-b border-brand-border/60 py-2">
-              <p>{educator.display_name}</p>
-              <div className="flex items-center gap-2">
-                <Badge tone={statusTone[educator.status]}>{statusLabel[educator.status]}</Badge>
-                {educator.status === "rejected" && (
-                  <form action={setEducatorStatus.bind(null, educator.id, "approved")}>
-                    <Button type="submit" size="sm" variant="secondary">
-                      Aprobar igual
-                    </Button>
-                  </form>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <EducatorsList educators={rest} />
       </Card>
     </div>
   );

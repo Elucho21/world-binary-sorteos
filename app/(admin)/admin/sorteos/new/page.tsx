@@ -1,6 +1,7 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { AdminNewSorteoForm } from "@/components/admin/admin-new-sorteo-form";
 
 export default async function AdminNewSorteoPage() {
@@ -21,6 +22,7 @@ export default async function AdminNewSorteoPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
+      <Breadcrumbs items={[{ label: "Sorteos", href: "/admin/sorteos" }, { label: "Nuevo sorteo" }]} />
       <div>
         <h1 className="text-2xl font-semibold">Nuevo sorteo</h1>
         <p className="text-sm text-brand-muted">

@@ -29,17 +29,18 @@ export default async function DashboardPage() {
   }
   const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
-  const { data: sorteos } = await supabase
-    .from("sorteos")
-    .select("id, name, slug, status, created_at")
-    .eq("educator_id", educatorId)
-    .order("created_at", { ascending: false });
-
-  const { count: availableCodeCount } = await supabase
-    .from("prize_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("educator_id", educatorId)
-    .eq("status", "available");
+  const [{ data: sorteos }, { count: availableCodeCount }] = await Promise.all([
+    supabase
+      .from("sorteos")
+      .select("id, name, slug, status, created_at")
+      .eq("educator_id", educatorId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
+      .eq("educator_id", educatorId)
+      .eq("status", "available"),
+  ]);
 
   const hasSorteo = (sorteos ?? []).length > 0;
   const hasActiveSorteo = (sorteos ?? []).some((s) => s.status === "active");

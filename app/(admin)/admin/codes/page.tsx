@@ -13,17 +13,15 @@ export default async function AdminCodesPage() {
   await requireSuperAdmin();
   const supabase = await createClient();
 
-  const { data: educators } = await supabase
-    .from("profiles")
-    .select("id, display_name, brand_name")
-    .eq("role", "educator")
-    .eq("status", "approved")
-    .order("display_name");
-
-  const { data: sorteosRaw } = await supabase
-    .from("sorteos")
-    .select("id, name, profiles(display_name)")
-    .order("created_at", { ascending: false });
+  const [{ data: educators }, { data: sorteosRaw }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, display_name, brand_name")
+      .eq("role", "educator")
+      .eq("status", "approved")
+      .order("display_name"),
+    supabase.from("sorteos").select("id, name, profiles(display_name)").order("created_at", { ascending: false }),
+  ]);
 
   const sorteos = (sorteosRaw ?? []) as unknown as SorteoQueryRow[];
 

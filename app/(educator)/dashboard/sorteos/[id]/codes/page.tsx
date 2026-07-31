@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { SorteoCodesPanel } from "@/components/dashboard/sorteo-codes-panel";
 
 export default async function SorteoCodesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,23 +11,29 @@ export default async function SorteoCodesPage({ params }: { params: Promise<{ id
   const educatorId = effectiveEducatorId(profile);
   const supabase = await createClient();
 
-  const { data: sorteo } = await supabase.from("sorteos").select("id, name").eq("id", id).single();
+  const [{ data: sorteo }, { data: codes }, { count: poolAvailable }] = await Promise.all([
+    supabase.from("sorteos").select("id, name").eq("id", id).single(),
+    supabase.from("prize_codes").select("id, code, status").eq("sorteo_id", id).order("created_at", { ascending: false }),
+    supabase
+      .from("prize_codes")
+      .select("id", { count: "exact", head: true })
+      .eq("educator_id", educatorId)
+      .eq("status", "unassigned"),
+  ]);
   if (!sorteo) notFound();
 
-  const { data: codes } = await supabase
-    .from("prize_codes")
-    .select("id, code, status")
-    .eq("sorteo_id", id)
-    .order("created_at", { ascending: false });
-
-  const { count: poolAvailable } = await supabase
-    .from("prize_codes")
-    .select("id", { count: "exact", head: true })
-    .eq("educator_id", educatorId)
-    .eq("status", "unassigned");
+  const rootHref = profile.role === "super_admin" ? "/admin/sorteos" : "/dashboard";
+  const rootLabel = profile.role === "super_admin" ? "Sorteos" : "Mis sorteos";
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: rootLabel, href: rootHref },
+          { label: sorteo.name, href: `/dashboard/sorteos/${id}` },
+          { label: "Premios" },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Premios — {sorteo.name}</h1>
         <p className="text-sm text-brand-muted">

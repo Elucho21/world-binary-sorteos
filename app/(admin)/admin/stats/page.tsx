@@ -13,21 +13,22 @@ export default async function AdminStatsPage() {
   await requireSuperAdmin();
   const supabase = await createClient();
 
-  const [{ data: recentParticipants }, { count: totalParticipants }, { count: totalIssued }, { count: totalRedeemed }] =
-    await Promise.all([
-      supabase.from("participants").select("created_at").order("created_at", { ascending: false }).limit(5000),
-      supabase.from("participants").select("id", { count: "exact", head: true }),
-      supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
-      supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
-    ]);
+  const [
+    { data: recentParticipants },
+    { count: totalParticipants },
+    { count: totalIssued },
+    { count: totalRedeemed },
+    { data: participantsBySorteo },
+  ] = await Promise.all([
+    supabase.from("participants").select("created_at").order("created_at", { ascending: false }).limit(5000),
+    supabase.from("participants").select("id", { count: "exact", head: true }),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
+    supabase.from("participants").select("sorteo_id, sorteos(name)").limit(5000),
+  ]);
 
   const rows = recentParticipants ?? [];
   const chartData = groupByDay(rows.map((p) => p.created_at));
-
-  const { data: participantsBySorteo } = await supabase
-    .from("participants")
-    .select("sorteo_id, sorteos(name)")
-    .limit(5000);
 
   const counts = new Map<string, { name: string; count: number }>();
   for (const row of (participantsBySorteo ?? []) as unknown as TopSorteoRow[]) {

@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { MiniBarChart } from "@/components/dashboard/mini-bar-chart";
 import { groupByDay } from "@/lib/stats";
 
 export default async function SorteoStatsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireApprovedEducator();
+  const profile = await requireApprovedEducator();
   const supabase = await createClient();
 
   const { data: sorteo } = await supabase
@@ -30,8 +31,18 @@ export default async function SorteoStatsPage({ params }: { params: Promise<{ id
   const total = rows.length;
   const chartData = groupByDay(rows.map((p) => p.created_at));
 
+  const rootHref = profile.role === "super_admin" ? "/admin/sorteos" : "/dashboard";
+  const rootLabel = profile.role === "super_admin" ? "Sorteos" : "Mis sorteos";
+
   return (
     <div className="space-y-6">
+      <Breadcrumbs
+        items={[
+          { label: rootLabel, href: rootHref },
+          { label: sorteo.name, href: `/dashboard/sorteos/${id}` },
+          { label: "Estadísticas" },
+        ]}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Estadísticas — {sorteo.name}</h1>
         <p className="text-sm text-brand-muted">Últimos 14 días.</p>
