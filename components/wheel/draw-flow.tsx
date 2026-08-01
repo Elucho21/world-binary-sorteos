@@ -6,7 +6,8 @@ import { Confetti } from "@/components/wheel/confetti";
 import { CountdownOverlay } from "@/components/wheel/countdown-overlay";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { createAudioContext, playTick, playWinChime, playCountdownBeep } from "@/lib/win-chime";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { createAudioContext, playTick, playWinChime, playNoWinnerSound, playCountdownBeep } from "@/lib/win-chime";
 import { MUSIC_TRACKS, playMusicLoop, stopMusic, type MusicTrackId } from "@/lib/music-tracks";
 import { drawWinners, type DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
@@ -16,6 +17,10 @@ const REVEAL_PAUSE_MS = 2000;
 const EXTRA_TURNS = 10;
 const FINAL_PHASE_FRACTION = 0.8;
 const COUNTDOWN_STEPS: (3 | 2 | 1 | 0)[] = [3, 2, 1, 0];
+const DECOY_COUNT = 2;
+
+type DrawMode = "normal" | "tercera";
+type RevealEntry = DrawnWinner & { isWinner: boolean };
 
 function toSegments(pool: { id: string; name: string }[]): WheelSegmentInput[] {
   return pool.map((p, i) => ({ id: p.id, label: p.name, color: COLORS[i % COLORS.length] }));
@@ -42,14 +47,25 @@ function currentSegmentIndex(svg: SVGSVGElement, segmentCount: number): number {
   return Math.floor(pointerAngle / sliceAngle) % segmentCount;
 }
 
+function shuffled<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function DrawFlow({
   sorteoId,
   participants,
+  winnersCount,
   alreadyDrawn,
   existingWinners,
 }: {
   sorteoId: string;
   participants: { id: string; name: string }[];
+  winnersCount: number;
   alreadyDrawn: boolean;
   existingWinners: DrawnWinner[];
 }) {
@@ -61,14 +77,15 @@ export function DrawFlow({
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<DrawnWinner[]>(alreadyDrawn ? existingWinners : []);
   const [showConfettiFor, setShowConfettiFor] = useState(0);
-  const [showFlashFor, setShowFlashFor] = useState(0);
-  const [bannerWinner, setBannerWinner] = useState<string | null>(null);
+  const [flash, setFlash] = useState<{ n: number; isWinner: boolean } | null>(null);
+  const [banner, setBanner] = useState<{ name: string; isWinner: boolean } | null>(null);
   const [done, setDone] = useState(alreadyDrawn);
   const [visibleCodes, setVisibleCodes] = useState<Record<string, boolean>>({});
   const [liveSegmentName, setLiveSegmentName] = useState<string | null>(null);
   const [isFinalPhase, setIsFinalPhase] = useState(false);
   const [countdown, setCountdown] = useState<3 | 2 | 1 | 0 | null>(null);
   const [musicTrack, setMusicTrack] = useState<MusicTrackId>("alegre");
+  const [mode, setMode] = useState<DrawMode>("normal");
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const tickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,6 +94,9 @@ export function DrawFlow({
   const rafRef = useRef<number | null>(null);
   const lastSegmentIndexRef = useRef<number>(-1);
   const spinStartTimeRef = useRef<number>(0);
+  const flashCounterRef = useRef(0);
+
+  const canUseTercera = participants.length - winnersCount >= DECOY_COUNT;
 
   useEffect(() => {
     return () => {
@@ -142,7 +162,7 @@ export function DrawFlow({
     setVisibleCodes((v) => ({ ...v, [participantId]: !v[participantId] }));
   }
 
-  function spinNext(queue: DrawnWinner[], currentPool: { id: string; name: string }[]) {
+  function spinNext(queue: RevealEntry[], currentPool: { id: string; name: string }[]) {
     if (queue.length === 0) {
       setDone(true);
       setSpinning(false);
@@ -164,15 +184,20 @@ export function DrawFlow({
       stopTicking();
       stopCalloutLoop();
       setLiveSegmentName(null);
-      setRevealed((r) => [...r, next]);
-      setShowConfettiFor((c) => c + 1);
-      setShowFlashFor((f) => f + 1);
-      setBannerWinner(next.name);
-      playWinChime(audioCtxRef.current);
+      if (next.isWinner) {
+        setRevealed((r) => [...r, next]);
+        setShowConfettiFor((c) => c + 1);
+        playWinChime(audioCtxRef.current);
+      } else {
+        playNoWinnerSound(audioCtxRef.current);
+      }
+      flashCounterRef.current += 1;
+      setFlash({ n: flashCounterRef.current, isWinner: next.isWinner });
+      setBanner({ name: next.name, isWinner: next.isWinner });
       const newPool = currentPool.filter((p) => p.id !== next.participantId);
       setPool(newPool);
       setSpinning(false);
-      setTimeout(() => setBannerWinner(null), 1600);
+      setTimeout(() => setBanner(null), 1600);
       setTimeout(() => spinNext(rest, newPool), REVEAL_PAUSE_MS);
     }, SPIN_MS);
   }
@@ -212,7 +237,17 @@ export function DrawFlow({
     }
     await runCountdown();
     setDrawing(false);
-    spinNext(result.winners ?? [], pool);
+
+    const winnerEntries: RevealEntry[] = (result.winners ?? []).map((w) => ({ ...w, isWinner: true }));
+    let queue = winnerEntries;
+    if (mode === "tercera" && canUseTercera) {
+      const winnerIds = new Set(winnerEntries.map((w) => w.participantId));
+      const decoys: RevealEntry[] = shuffled(pool.filter((p) => !winnerIds.has(p.id)))
+        .slice(0, DECOY_COUNT)
+        .map((p) => ({ participantId: p.id, name: p.name, code: null, isWinner: false }));
+      queue = [...decoys, ...winnerEntries];
+    }
+    spinNext(queue, pool);
   }
 
   const segments = toSegments(pool);
@@ -223,21 +258,31 @@ export function DrawFlow({
         {showConfettiFor > 0 && !spinning && revealed.length > 0 && <Confetti key={showConfettiFor} />}
 
         <div ref={wheelWrapperRef} className="relative" style={{ width: 280, height: 280 }}>
-          {showFlashFor > 0 && (
+          {flash && (
             <div
-              key={showFlashFor}
-              className="winner-flash pointer-events-none absolute inset-0 z-30 rounded-full bg-white"
+              key={flash.n}
+              className={`winner-flash pointer-events-none absolute inset-0 z-30 rounded-full ${
+                flash.isWinner ? "bg-white" : "bg-brand-danger"
+              }`}
             />
           )}
           <Wheel segments={segments} rotationDeg={rotation} transitionMs={transitionMs} size={280} spinning={spinning} />
           {countdown !== null && <CountdownOverlay value={countdown} />}
-          {bannerWinner && (
+          {banner && (
             <div className="winner-banner absolute inset-0 z-40 flex items-center justify-center px-4">
-              <div className="rounded-lg border border-brand-accent bg-brand-bg/95 px-6 py-4 text-center shadow-xl">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">
-                  ¡Tenemos ganador!
+              <div
+                className={`rounded-lg border bg-brand-bg/95 px-6 py-4 text-center shadow-xl ${
+                  banner.isWinner ? "border-brand-accent" : "border-brand-danger"
+                }`}
+              >
+                <p
+                  className={`text-xs font-semibold uppercase tracking-wide ${
+                    banner.isWinner ? "text-brand-accent" : "text-brand-danger"
+                  }`}
+                >
+                  {banner.isWinner ? "¡Tenemos ganador!" : "No ganó esta vez..."}
                 </p>
-                <p className="mt-1 text-xl font-bold">{bannerWinner}</p>
+                <p className="mt-1 text-xl font-bold">{banner.name}</p>
               </div>
             </div>
           )}
@@ -261,6 +306,43 @@ export function DrawFlow({
 
         {!done && (
           <>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <span className="text-xs text-brand-muted">Modo:</span>
+              <button
+                type="button"
+                onClick={() => setMode("normal")}
+                disabled={drawing || spinning}
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  mode === "normal"
+                    ? "border-brand-accent bg-brand-accent/10 text-brand-accent"
+                    : "border-brand-border text-brand-muted hover:text-brand-text"
+                }`}
+              >
+                Normal
+              </button>
+              <button
+                type="button"
+                onClick={() => canUseTercera && setMode("tercera")}
+                disabled={drawing || spinning || !canUseTercera}
+                title={
+                  canUseTercera
+                    ? undefined
+                    : "Necesitás al menos 2 inscriptos más que la cantidad de ganadores para usar este modo."
+                }
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  mode === "tercera"
+                    ? "border-brand-accent bg-brand-accent/10 text-brand-accent"
+                    : "border-brand-border text-brand-muted hover:text-brand-text"
+                }`}
+              >
+                A la tercera
+              </button>
+              <InfoTooltip label="Ayuda sobre el modo de sorteo">
+                &quot;A la tercera&quot;: antes de los ganadores, la ruleta cae 2 veces en gente
+                que no gana nada, para generar más suspenso. Recién después salen los ganadores
+                de verdad.
+              </InfoTooltip>
+            </div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               <span className="text-xs text-brand-muted">Música:</span>
               {Object.values(MUSIC_TRACKS).map((track) => (

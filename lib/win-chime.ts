@@ -51,6 +51,28 @@ export function playCountdownBeep(ctx: AudioContext | null, step: 3 | 2 | 1 | 0)
   }
 }
 
+export function playNoWinnerSound(ctx: AudioContext | null) {
+  if (!ctx) return;
+  try {
+    const notes = [311.13, 233.08]; // Eb4, Bb3 — descending "not this one" tone
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.14, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+  } catch {
+    // Autoplay/audio blocked — silently skip, it's a non-essential flourish.
+  }
+}
+
 export function playWinChime(ctx: AudioContext | null) {
   if (!ctx) return;
   try {

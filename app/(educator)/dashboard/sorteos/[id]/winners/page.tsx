@@ -69,6 +69,7 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
       <DrawFlow
         sorteoId={id}
         participants={participants ?? []}
+        winnersCount={sorteo.winners_count}
         alreadyDrawn={!!sorteo.drawn_at}
         existingWinners={existingWinners}
       />
