@@ -195,6 +195,10 @@ todos los inscriptos.
   15s, sin Realtime).
 - Modo simulacro: corre la animación completa del sorteo con participantes
   ficticios, sin gastar premios reales ni tocar los datos del sorteo.
+- Modo "a la tercera": antes de los ganadores reales, la ruleta cae 2 veces
+  en gente que no gana nada (banner/sonido distintos, sin confetti), para
+  generar más suspenso — solo disponible si hay al menos 2 inscriptos de
+  más que la cantidad de ganadores.
 - Migración `0005_v1_7_improvements.sql`.
 
 ## Pendiente / backlog
@@ -205,6 +209,13 @@ todos los inscriptos.
 - Loop de referidos para participantes (giro extra por traer un amigo —
   distinto del programa de referidos entre educadores de v1.7).
 - Soporte multi-idioma (descartado por ahora).
+- Barra de progreso visual en "Premios" (cuántos códigos cargados vs.
+  necesarios).
+- Alerta en el dashboard si un sorteo activo está por vencer sin premios
+  cargados o sin sortearse.
+- 2FA (TOTP) opcional para cuentas de super admin.
+- Alerta temprana de cuota de Netlify/Supabase (después de haberla
+  agotado una vez).
 - Ruleta en vivo visible para todos los espectadores en tiempo real (vía
   Supabase Realtime), sincronizada con el momento en que el educador
   sortea.
