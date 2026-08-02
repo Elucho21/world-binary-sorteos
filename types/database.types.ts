@@ -26,7 +26,6 @@ export type Profile = {
   brand_name: string | null;
   avatar_url: string | null;
   managed_by: string | null;
-  referred_by: string | null;
   created_at: string;
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useActionState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import { signup, type AuthActionState } from "../actions";
 import { SiteHeader } from "@/components/brand/site-header";
@@ -8,12 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export default function SignupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ ref?: string }>;
-}) {
-  const { ref } = use(searchParams);
+export default function SignupPage() {
   const [state, formAction, pending] = useActionState<AuthActionState, FormData>(
     signup,
     undefined
@@ -49,7 +44,6 @@ export default function SignupPage({
             </div>
           ) : (
             <form action={formAction} className="space-y-4">
-              {ref && <input type="hidden" name="ref" value={ref} />}
               <div>
                 <Label htmlFor="displayName">Nombre / marca</Label>
                 <Input id="displayName" name="displayName" required autoComplete="name" />

@@ -51,13 +51,11 @@ export async function signup(
     return { error: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados." };
   }
 
-  const referredBy = String(formData.get("ref") ?? "").trim();
-
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
-    options: { data: { display_name: parsed.data.displayName, referred_by: referredBy || undefined } },
+    options: { data: { display_name: parsed.data.displayName } },
   });
 
   if (error) {

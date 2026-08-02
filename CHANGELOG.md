@@ -150,7 +150,7 @@ todos los inscriptos.
   "contraseña incorrecta"; y el mensaje post-registro ya no promete un
   mail de confirmación, con un botón directo a Ingresar.
 
-## v1.7 — Seguridad, velocidad, y negocio (sorteos con nivel, referidos, verificables)
+## v1.7 — Seguridad, velocidad, y negocio (sorteos con nivel, verificables)
 
 **UX**
 - `og:image`/`og:title` dinámicos por sorteo (`next/og`) para que el link de
@@ -166,8 +166,6 @@ todos los inscriptos.
   competir con el de registro.
 
 **Velocidad**
-- Estadísticas de sorteo y globales cacheadas ~60s (`unstable_cache`) en vez
-  de recalcularse en cada carga.
 - El QR de cada sorteo se cachea (el contenido es una función pura de la
   URL, así que no hace falta regenerarlo en cada visita).
 
@@ -179,8 +177,6 @@ todos los inscriptos.
   sortear.
 - Story de Instagram y post de Facebook generados (además del QR + texto de
   WhatsApp que ya existía) desde la sección Compartir de cada sorteo.
-- Programa de referidos entre educadores: cada educador tiene su link de
-  invitación (`/dashboard/referidos`) y ve a quién trajo a la plataforma.
 
 **Sorteos + trading**
 - Sorteo verificable: cada draw guarda la semilla del algoritmo (mulberry32
@@ -201,13 +197,23 @@ todos los inscriptos.
   más que la cantidad de ganadores.
 - Migración `0005_v1_7_improvements.sql`.
 
+## v1.7.1 — Ajustes post-deploy
+
+- Se sacó el cacheo de estadísticas (`/admin/stats` y
+  `/dashboard/sorteos/[id]/stats`) que se había sumado en v1.7: volvieron a
+  las queries directas de siempre. Se sospecha que `unstable_cache` no se
+  comporta bien en el runtime de Netlify para este proyecto; el reporte de
+  valor/ROI se mantiene, ahora calculado sin caché.
+- Se sacó el programa de referidos entre educadores de v1.7 (no era lo
+  pedido). Migración `0006_remove_referral_program.sql` revierte la
+  columna `profiles.referred_by` y el trigger asociado.
+
 ## Pendiente / backlog
 
 - Notificaciones por email (stock bajo de códigos, alta de educador
   nuevo).
 - Página pública de "educadores destacados".
-- Loop de referidos para participantes (giro extra por traer un amigo —
-  distinto del programa de referidos entre educadores de v1.7).
+- Loop de referidos (giro extra por traer un amigo).
 - Soporte multi-idioma (descartado por ahora).
 - Barra de progreso visual en "Premios" (cuántos códigos cargados vs.
   necesarios).

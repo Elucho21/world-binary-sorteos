@@ -1,8 +1,8 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MiniBarChart } from "@/components/dashboard/mini-bar-chart";
 import { groupByDay } from "@/lib/stats";
-import { getCachedAdminStats } from "@/lib/cache";
 
 interface TopSorteoRow {
   sorteo_id: string;
@@ -11,11 +11,23 @@ interface TopSorteoRow {
 
 export default async function AdminStatsPage() {
   await requireSuperAdmin();
+  const supabase = await createClient();
 
-  const { recentParticipants, totalParticipants, totalIssued, totalRedeemed, participantsBySorteo } =
-    await getCachedAdminStats();
+  const [
+    { data: recentParticipants },
+    { count: totalParticipants },
+    { count: totalIssued },
+    { count: totalRedeemed },
+    { data: participantsBySorteo },
+  ] = await Promise.all([
+    supabase.from("participants").select("created_at").order("created_at", { ascending: false }).limit(5000),
+    supabase.from("participants").select("id", { count: "exact", head: true }),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
+    supabase.from("participants").select("sorteo_id, sorteos(name)").limit(5000),
+  ]);
 
-  const rows = recentParticipants;
+  const rows = recentParticipants ?? [];
   const chartData = groupByDay(rows.map((p) => p.created_at));
 
   const counts = new Map<string, { name: string; count: number }>();

@@ -12,7 +12,6 @@ interface EducatorRow {
   brand_name: string | null;
   status: ProfileStatus;
   created_at: string;
-  referrerName?: string | null;
 }
 
 const statusTone: Record<ProfileStatus, "warning" | "success" | "danger"> = {
@@ -70,12 +69,7 @@ export function EducatorsList({ educators }: { educators: EducatorRow[] }) {
       <div className="space-y-2">
         {filtered.map((educator) => (
           <div key={educator.id} className="flex items-center justify-between border-b border-brand-border/60 py-2">
-            <div>
-              <p>{educator.display_name}</p>
-              {educator.referrerName && (
-                <p className="text-xs text-brand-muted">Referido por {educator.referrerName}</p>
-              )}
-            </div>
+            <p>{educator.display_name}</p>
             <div className="flex items-center gap-2">
               <Badge tone={statusTone[educator.status]}>{statusLabel[educator.status]}</Badge>
               {educator.status === "rejected" && (
