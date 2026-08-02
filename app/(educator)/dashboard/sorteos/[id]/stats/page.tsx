@@ -5,6 +5,8 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { MiniBarChart } from "@/components/dashboard/mini-bar-chart";
 import { groupByDay } from "@/lib/stats";
+import { getCachedSorteoStats, getCachedSorteoValueReport } from "@/lib/cache";
+import { ValueReportCard } from "@/components/dashboard/value-report-card";
 
 export default async function SorteoStatsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,21 +15,20 @@ export default async function SorteoStatsPage({ params }: { params: Promise<{ id
 
   const { data: sorteo } = await supabase
     .from("sorteos")
-    .select("id, name, winners_count, drawn_at")
+    .select("id, name, educator_id, winners_count, drawn_at, created_at")
     .eq("id", id)
     .single();
   if (!sorteo) notFound();
 
-  const [{ data: participants }, { count: prizesAvailable }] = await Promise.all([
-    supabase.from("participants").select("created_at").eq("sorteo_id", id),
-    supabase
-      .from("prize_codes")
-      .select("id", { count: "exact", head: true })
-      .eq("sorteo_id", id)
-      .eq("status", "available"),
+  // Ownership was just verified above via the RLS-scoped query (notFound()
+  // would have fired otherwise), so it's safe to serve the heavier aggregate
+  // for this exact sorteoId from the shared, time-based cache below.
+  const [{ participants, prizesAvailable }, valueReport] = await Promise.all([
+    getCachedSorteoStats(id),
+    getCachedSorteoValueReport(id, sorteo.educator_id),
   ]);
 
-  const rows = participants ?? [];
+  const rows = participants;
   const total = rows.length;
   const chartData = groupByDay(rows.map((p) => p.created_at));
 
@@ -70,6 +71,12 @@ export default async function SorteoStatsPage({ params }: { params: Promise<{ id
         </CardHeader>
         <MiniBarChart data={chartData} />
       </Card>
+
+      <ValueReportCard
+        total={valueReport.total}
+        newCount={valueReport.newCount}
+        returningCount={valueReport.returningCount}
+      />
     </div>
   );
 }

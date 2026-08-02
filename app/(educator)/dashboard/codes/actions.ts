@@ -5,7 +5,7 @@ import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { insertCodeBatch } from "@/lib/codes";
 import { parseCodesFile } from "@/lib/csv";
-import { manualCodesSchema } from "@/lib/validation";
+import { manualCodesSchema, tieredCodesSchema } from "@/lib/validation";
 
 export type FormState = { error?: string; success?: string } | undefined;
 
@@ -113,7 +113,10 @@ export async function uploadManualCodesToSorteo(
   formData: FormData
 ): Promise<FormState> {
   const profile = await requireApprovedEducator();
-  const parsed = manualCodesSchema.safeParse({ codes: formData.get("codes") });
+  const parsed = tieredCodesSchema.safeParse({
+    codes: formData.get("codes"),
+    tier: formData.get("tier") || undefined,
+  });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Pegá al menos un código." };
   }
@@ -127,6 +130,7 @@ export async function uploadManualCodesToSorteo(
     source: "educator_manual",
     codes: parsed.data.codes,
     sorteoId,
+    tier: parsed.data.tier,
   });
 
   if (result.error) return { error: result.error };

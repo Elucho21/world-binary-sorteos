@@ -13,7 +13,11 @@ export default async function SorteoCodesPage({ params }: { params: Promise<{ id
 
   const [{ data: sorteo }, { data: codes }, { count: poolAvailable }] = await Promise.all([
     supabase.from("sorteos").select("id, name").eq("id", id).single(),
-    supabase.from("prize_codes").select("id, code, status").eq("sorteo_id", id).order("created_at", { ascending: false }),
+    supabase
+      .from("prize_codes")
+      .select("id, code, status, tier")
+      .eq("sorteo_id", id)
+      .order("created_at", { ascending: false }),
     supabase
       .from("prize_codes")
       .select("id", { count: "exact", head: true })

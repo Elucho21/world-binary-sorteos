@@ -10,13 +10,26 @@ export default async function AdminEducatorsPage() {
 
   const { data: educators } = await supabase
     .from("profiles")
-    .select("id, display_name, brand_name, status, created_at")
+    .select("id, display_name, brand_name, status, created_at, referred_by")
     .eq("role", "educator")
     .is("managed_by", null)
     .order("created_at", { ascending: false });
 
-  const pending = (educators ?? []).filter((e) => e.status === "pending");
-  const rest = (educators ?? []).filter((e) => e.status !== "pending");
+  const referrerIds = Array.from(
+    new Set((educators ?? []).map((e) => e.referred_by).filter((id): id is string => !!id))
+  );
+  const { data: referrers } =
+    referrerIds.length > 0
+      ? await supabase.from("profiles").select("id, display_name").in("id", referrerIds)
+      : { data: [] };
+  const referrerNames = new Map((referrers ?? []).map((r) => [r.id, r.display_name]));
+
+  const withReferrer = (educators ?? []).map((e) => ({
+    ...e,
+    referrerName: e.referred_by ? referrerNames.get(e.referred_by) : null,
+  }));
+  const pending = withReferrer.filter((e) => e.status === "pending");
+  const rest = withReferrer.filter((e) => e.status !== "pending");
 
   return (
     <div className="space-y-6">

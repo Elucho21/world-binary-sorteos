@@ -150,15 +150,66 @@ todos los inscriptos.
   "contraseña incorrecta"; y el mensaje post-registro ya no promete un
   mail de confirmación, con un botón directo a Ingresar.
 
+## v1.7 — Seguridad, velocidad, y negocio (sorteos con nivel, referidos, verificables)
+
+**UX**
+- `og:image`/`og:title` dinámicos por sorteo (`next/og`) para que el link de
+  `/s/[slug]` se vea bien al compartirlo por WhatsApp/Instagram.
+- PWA instalable: manifest + íconos generados, así el educador puede
+  agregar la app a su pantalla de inicio en vez de usar una pestaña más.
+
+**Seguridad**
+- Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy,
+  Permissions-Policy) en `netlify.toml`.
+- `/api/check-prize` ahora tiene el mismo rate limiting por IP que
+  `/api/register`, con un presupuesto propio (`spin_attempts.kind`) para no
+  competir con el de registro.
+
+**Velocidad**
+- Estadísticas de sorteo y globales cacheadas ~60s (`unstable_cache`) en vez
+  de recalcularse en cada carga.
+- El QR de cada sorteo se cachea (el contenido es una función pura de la
+  URL, así que no hace falta regenerarlo en cada visita).
+
+**Aprovechamiento comercial**
+- Reporte de valor/ROI por sorteo: cuántos inscriptos son nuevos para el
+  educador vs. cuántos ya lo conocían de otro sorteo.
+- Premios por niveles dentro de un mismo sorteo (`prize_codes.tier`): un
+  premio grande + varios chicos, siempre asignados en orden de prioridad al
+  sortear.
+- Story de Instagram y post de Facebook generados (además del QR + texto de
+  WhatsApp que ya existía) desde la sección Compartir de cada sorteo.
+- Programa de referidos entre educadores: cada educador tiene su link de
+  invitación (`/dashboard/referidos`) y ve a quién trajo a la plataforma.
+
+**Sorteos + trading**
+- Sorteo verificable: cada draw guarda la semilla del algoritmo (mulberry32
+  + Fisher-Yates) y un hash de la lista de inscriptos usada, visible para el
+  educador y de forma pública una vez sorteado.
+- Ganador suplente automático: si un ganador no canjea su código en 7 días,
+  se reasigna una vez al azar entre los demás inscriptos (Netlify Scheduled
+  Function diaria).
+- Reporte PDF descargable por sorteo con ganadores, fecha y los datos de
+  verificación.
+- "Pulso en vivo" de inscriptos en la pantalla de Sortear (polling cada
+  15s, sin Realtime).
+- Modo simulacro: corre la animación completa del sorteo con participantes
+  ficticios, sin gastar premios reales ni tocar los datos del sorteo.
+- Migración `0005_v1_7_improvements.sql`.
+
 ## Pendiente / backlog
 
-- Headers de seguridad (CSP, X-Frame-Options, Referrer-Policy) en
-  `netlify.toml`.
 - Notificaciones por email (stock bajo de códigos, alta de educador
   nuevo).
 - Página pública de "educadores destacados".
-- Loop de referidos (giro extra por traer un amigo).
+- Loop de referidos para participantes (giro extra por traer un amigo —
+  distinto del programa de referidos entre educadores de v1.7).
 - Soporte multi-idioma (descartado por ahora).
 - Ruleta en vivo visible para todos los espectadores en tiempo real (vía
   Supabase Realtime), sincronizada con el momento en que el educador
   sortea.
+- 2FA (TOTP) opcional para cuentas de super admin.
+- Alerta temprana de cuota de Netlify/Supabase.
+- Alerta en el dashboard si un sorteo activo está por vencer sin premios
+  cargados o sin sortearse.
+- Barra de progreso visual en "Premios".

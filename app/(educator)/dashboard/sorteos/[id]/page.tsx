@@ -1,5 +1,4 @@
 import Link from "next/link";
-import QRCode from "qrcode";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { requireApprovedEducator } from "@/lib/auth/dal";
@@ -15,6 +14,7 @@ import { SorteoDetailTour } from "@/components/dashboard/sorteo-detail-tour";
 import { ConfirmButton } from "@/components/dashboard/delete-button";
 import { ShareCopyButton } from "@/components/dashboard/share-copy-button";
 import { deleteSorteo, cloneSorteo } from "../actions";
+import { getCachedQrDataUrl } from "@/lib/cache";
 import type { SorteoStatus } from "@/types/database.types";
 
 const statusLabel: Record<SorteoStatus, string> = {
@@ -46,11 +46,7 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/s/${sorteo.slug}`;
-  const qrDataUrl = await QRCode.toDataURL(publicUrl, {
-    margin: 1,
-    width: 220,
-    color: { dark: "#191919", light: "#f7f7f7" },
-  });
+  const qrDataUrl = await getCachedQrDataUrl(publicUrl);
   const shareText = `🎉 ¡Registrate en el sorteo de ${sorteo.name} y participá por una cuenta bono de World Binary! Anotate acá: ${publicUrl}`;
 
   return (
@@ -156,7 +152,19 @@ export default async function SorteoDetailPage({ params }: { params: Promise<{ i
             <p className="rounded-md border border-brand-border bg-brand-bg p-3 text-sm text-brand-muted">
               {shareText}
             </p>
-            <ShareCopyButton text={shareText} label="Copiar mensaje" />
+            <div className="flex flex-wrap gap-2">
+              <ShareCopyButton text={shareText} label="Copiar mensaje" />
+              <a href={`/dashboard/sorteos/${id}/marketing/story`}>
+                <Button type="button" variant="secondary" size="sm">
+                  Story de Instagram
+                </Button>
+              </a>
+              <a href={`/dashboard/sorteos/${id}/marketing/facebook`}>
+                <Button type="button" variant="secondary" size="sm">
+                  Post de Facebook
+                </Button>
+              </a>
+            </div>
           </div>
         </div>
       </Card>

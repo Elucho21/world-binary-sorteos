@@ -16,6 +16,34 @@ const REVEAL_PAUSE_MS = 2000;
 const EXTRA_TURNS = 10;
 const FINAL_PHASE_FRACTION = 0.8;
 const COUNTDOWN_STEPS: (3 | 2 | 1 | 0)[] = [3, 2, 1, 0];
+const PRACTICE_NAMES = [
+  "Trader Prueba 1",
+  "Trader Prueba 2",
+  "Trader Prueba 3",
+  "Trader Prueba 4",
+  "Trader Prueba 5",
+  "Trader Prueba 6",
+  "Trader Prueba 7",
+  "Trader Prueba 8",
+];
+
+function makePracticePool(): { id: string; name: string }[] {
+  return PRACTICE_NAMES.map((name, i) => ({ id: `practice-${i}`, name }));
+}
+
+function makePracticeWinners(pool: { id: string; name: string }[], count: number): DrawnWinner[] {
+  const shuffled = [...pool];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count).map((p, i) => ({
+    participantId: p.id,
+    name: p.name,
+    code: `PRUEBA-${String(i + 1).padStart(4, "0")}`,
+    tier: null,
+  }));
+}
 
 function toSegments(pool: { id: string; name: string }[]): WheelSegmentInput[] {
   return pool.map((p, i) => ({ id: p.id, label: p.name, color: COLORS[i % COLORS.length] }));
@@ -69,6 +97,7 @@ export function DrawFlow({
   const [isFinalPhase, setIsFinalPhase] = useState(false);
   const [countdown, setCountdown] = useState<3 | 2 | 1 | 0 | null>(null);
   const [musicTrack, setMusicTrack] = useState<MusicTrackId>("alegre");
+  const [practiceMode, setPracticeMode] = useState(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const tickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,21 +227,43 @@ export function DrawFlow({
     });
   }
 
-  async function handleDraw() {
+  async function handleDraw(practice: boolean) {
     setError(null);
     setDrawing(true);
+    setPracticeMode(practice);
     if (!audioCtxRef.current) audioCtxRef.current = createAudioContext();
     musicNodesRef.current = playMusicLoop(audioCtxRef.current, musicTrack);
-    const result = await drawWinners(sorteoId);
-    if (result.error) {
-      setDrawing(false);
-      stopMusic(musicNodesRef.current);
-      setError(result.error);
-      return;
+
+    let winners: DrawnWinner[];
+    let drawPool: { id: string; name: string }[];
+    if (practice) {
+      drawPool = makePracticePool();
+      winners = makePracticeWinners(drawPool, Math.max(1, Math.min(participants.length || 3, drawPool.length)));
+      setPool(drawPool);
+    } else {
+      const result = await drawWinners(sorteoId);
+      if (result.error) {
+        setDrawing(false);
+        stopMusic(musicNodesRef.current);
+        setError(result.error);
+        return;
+      }
+      winners = result.winners ?? [];
+      drawPool = pool;
     }
+
     await runCountdown();
     setDrawing(false);
-    spinNext(result.winners ?? [], pool);
+    spinNext(winners, drawPool);
+  }
+
+  function resetAfterPractice() {
+    setPool(participants);
+    setRevealed([]);
+    setDone(false);
+    setPracticeMode(false);
+    setShowConfettiFor(0);
+    setShowFlashFor(0);
   }
 
   const segments = toSegments(pool);
@@ -283,15 +334,24 @@ export function DrawFlow({
               Esta acción es irreversible: una vez que gira la ruleta no se puede deshacer ni
               repetir el sorteo.
             </p>
-            <Button size="lg" onClick={handleDraw} disabled={drawing || spinning || participants.length === 0}>
-              {drawing
-                ? countdown !== null
-                  ? `Arrancando en ${countdown === 0 ? "..." : countdown}`
-                  : "Preparando..."
-                : spinning
-                  ? "Girando..."
-                  : "Sortear"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="lg" onClick={() => handleDraw(false)} disabled={drawing || spinning || participants.length === 0}>
+                {drawing && !practiceMode
+                  ? countdown !== null
+                    ? `Arrancando en ${countdown === 0 ? "..." : countdown}`
+                    : "Preparando..."
+                  : spinning && !practiceMode
+                    ? "Girando..."
+                    : "Sortear"}
+              </Button>
+              <Button size="lg" variant="secondary" onClick={() => handleDraw(true)} disabled={drawing || spinning}>
+                🧪 Modo simulacro
+              </Button>
+            </div>
+            <p className="text-xs text-brand-muted">
+              El modo simulacro corre la animación completa con participantes ficticios, sin usar
+              premios reales ni tocar los datos de este sorteo.
+            </p>
           </>
         )}
         {error && <p className="text-sm text-brand-danger">{error}</p>}
@@ -300,9 +360,24 @@ export function DrawFlow({
         )}
       </div>
 
+      {done && practiceMode && (
+        <Card className="border-brand-accent/40 bg-brand-accent/5">
+          <p className="font-semibold text-brand-accent">Esto fue un simulacro</p>
+          <p className="mt-1 text-sm text-brand-muted">
+            No se gastó ningún premio real ni se modificaron los datos de este sorteo. Cuando estés
+            listo para el sorteo real, volvé a esta pantalla.
+          </p>
+          <Button size="sm" variant="secondary" className="mt-3" onClick={resetAfterPractice}>
+            Volver a la pantalla de sorteo real
+          </Button>
+        </Card>
+      )}
+
       {revealed.length > 0 && (
         <Card>
-          <p className="mb-1 font-semibold">Ganadores ({revealed.length})</p>
+          <p className="mb-1 font-semibold">
+            {practiceMode ? "Ganadores (simulacro)" : `Ganadores (${revealed.length})`}
+          </p>
           <p className="mb-3 text-xs text-brand-muted">
             Los códigos quedan ocultos por defecto — si estás compartiendo pantalla, evitá revelarlos en vivo
             para que nadie los use antes que el ganador.
@@ -310,8 +385,13 @@ export function DrawFlow({
           <div className="space-y-2">
             {revealed.map((w, i) => (
               <div key={w.participantId} className="flex items-center justify-between border-b border-brand-border/60 py-2">
-                <span>
+                <span className="flex items-center gap-2">
                   #{i + 1} — {w.name}
+                  {w.tier && (
+                    <span className="rounded-full bg-brand-accent/10 px-2 py-0.5 text-xs text-brand-accent">
+                      {w.tier}
+                    </span>
+                  )}
                 </span>
                 {w.code ? (
                   visibleCodes[w.participantId] ? (

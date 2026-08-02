@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sorteos World Binary",
   description: "Sorteos y ruletas para educadores e IBs de World Binary.",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "WB Sorteos" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#191919",
 };
 
 export default function RootLayout({
