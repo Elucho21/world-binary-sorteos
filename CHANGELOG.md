@@ -207,6 +207,10 @@ todos los inscriptos.
 - Se sacó el programa de referidos entre educadores de v1.7 (no era lo
   pedido). Migración `0006_remove_referral_program.sql` revierte la
   columna `profiles.referred_by` y el trigger asociado.
+- Eliminar solicitudes de educador: en `/admin/educators`, además de
+  aprobar/rechazar ahora se puede borrar por completo una cuenta pendiente
+  o rechazada (nunca una aprobada, para no tocar cuentas con datos
+  reales) — borra el usuario de Auth vía el cliente de servicio.
 
 ## Pendiente / backlog
 

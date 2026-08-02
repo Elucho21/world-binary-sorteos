@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { setEducatorStatus } from "@/app/(admin)/admin/educators/actions";
+import { setEducatorStatus, deleteEducatorRequest } from "@/app/(admin)/admin/educators/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/dashboard/delete-button";
 import type { ProfileStatus } from "@/types/database.types";
 
 interface EducatorRow {
@@ -73,11 +74,20 @@ export function EducatorsList({ educators }: { educators: EducatorRow[] }) {
             <div className="flex items-center gap-2">
               <Badge tone={statusTone[educator.status]}>{statusLabel[educator.status]}</Badge>
               {educator.status === "rejected" && (
-                <form action={setEducatorStatus.bind(null, educator.id, "approved")}>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Aprobar igual
-                  </Button>
-                </form>
+                <>
+                  <form action={setEducatorStatus.bind(null, educator.id, "approved")}>
+                    <Button type="submit" size="sm" variant="secondary">
+                      Aprobar igual
+                    </Button>
+                  </form>
+                  <ConfirmButton
+                    action={deleteEducatorRequest.bind(null, educator.id)}
+                    confirmText={`¿Eliminar por completo la cuenta de ${educator.display_name}? Esto la borra, no se puede deshacer.`}
+                    variant="ghost"
+                  >
+                    Eliminar
+                  </ConfirmButton>
+                </>
               )}
             </div>
           </div>
