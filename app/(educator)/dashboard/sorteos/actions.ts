@@ -2,9 +2,33 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { randomBytes, createHash } from "node:crypto";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sorteoSchema } from "@/lib/validation";
+
+// Seeded shuffle so a draw can be reproduced and checked independently (v1.7
+// "sorteo verificable"): given the revealed seed and the same participant
+// list (created_at asc, id asc — see drawWinners), anyone can re-run this
+// exact algorithm and confirm the winner order matches.
+function mulberry32(seed: number) {
+  return function random() {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(items: T[], rng: () => number): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
 
 export type FormState = { error?: string } | undefined;
 
@@ -160,7 +184,7 @@ export async function deleteSorteo(sorteoId: string) {
 
 // --- the draw ---
 
-export type DrawnWinner = { participantId: string; name: string; code: string | null };
+export type DrawnWinner = { participantId: string; name: string; code: string | null; tier: string | null };
 export type DrawResult = { error?: string; winners?: DrawnWinner[] };
 
 export async function drawWinners(sorteoId: string): Promise<DrawResult> {
@@ -171,20 +195,27 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
   if (!sorteo) return { error: "Sorteo no encontrado." };
   if (sorteo.drawn_at) return { error: "Este sorteo ya fue sorteado." };
 
+  // Deterministic order: this exact list (and order) is what the seeded
+  // shuffle below runs over, and what draw_participants_hash commits to.
   const { data: participants } = await supabase
     .from("participants")
     .select("id, name")
-    .eq("sorteo_id", sorteoId);
+    .eq("sorteo_id", sorteoId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (!participants || participants.length === 0) {
     return { error: "Todavía no hay participantes registrados." };
   }
 
+  // Lowest tier_priority first, so position 1 always lands the top-tier prize.
   const { data: availableCodes } = await supabase
     .from("prize_codes")
-    .select("id")
+    .select("id, tier")
     .eq("sorteo_id", sorteoId)
     .eq("status", "available")
+    .order("tier_priority", { ascending: true })
+    .order("created_at", { ascending: true })
     .limit(sorteo.winners_count);
 
   if (!availableCodes || availableCodes.length === 0) {
@@ -193,23 +224,23 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
 
   const winnersCount = Math.min(sorteo.winners_count, participants.length, availableCodes.length);
 
-  const shuffled = [...participants];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
+  const seedHex = randomBytes(4).toString("hex");
+  const rng = mulberry32(parseInt(seedHex, 16));
+  const participantsHash = createHash("sha256").update(JSON.stringify(participants.map((p) => p.id))).digest("hex");
+
+  const shuffled = seededShuffle(participants, rng);
   const chosen = shuffled.slice(0, winnersCount);
 
   const results: DrawnWinner[] = [];
 
   for (let i = 0; i < chosen.length; i++) {
     const participant = chosen[i];
-    const codeId = availableCodes[i].id;
+    const code = availableCodes[i];
 
     const { data: claimedCode, error: claimError } = await supabase
       .from("prize_codes")
       .update({ status: "issued", issued_to: participant.id, issued_at: new Date().toISOString() })
-      .eq("id", codeId)
+      .eq("id", code.id)
       .eq("status", "available")
       .select("code")
       .single();
@@ -219,11 +250,11 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
     await supabase.from("raffle_winners").insert({
       sorteo_id: sorteoId,
       participant_id: participant.id,
-      prize_code_id: codeId,
+      prize_code_id: code.id,
       position: i + 1,
     });
 
-    results.push({ participantId: participant.id, name: participant.name, code: claimedCode.code });
+    results.push({ participantId: participant.id, name: participant.name, code: claimedCode.code, tier: code.tier });
   }
 
   if (results.length === 0) {
@@ -232,7 +263,12 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
 
   await supabase
     .from("sorteos")
-    .update({ drawn_at: new Date().toISOString(), status: "ended" })
+    .update({
+      drawn_at: new Date().toISOString(),
+      status: "ended",
+      draw_seed: seedHex,
+      draw_participants_hash: participantsHash,
+    })
     .eq("id", sorteoId);
 
   revalidatePath(`/dashboard/sorteos/${sorteoId}`);

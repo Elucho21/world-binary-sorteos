@@ -1,25 +1,43 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/brand/site-header";
 import { SiteFooter } from "@/components/brand/site-footer";
 import { BannerStrip } from "@/components/brand/banner-strip";
 import { RegistrationForm } from "@/components/public/registration-form";
 import { PrizeRevealCheck } from "@/components/public/prize-reveal-check";
+import { getPublicSorteo } from "./data";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const sorteo = await getPublicSorteo(slug);
+  if (!sorteo) return {};
+
+  const educatorLabel = sorteo.educator_brand_name || sorteo.educator_display_name || "World Binary";
+  const title = `${sorteo.name} — Sorteo de ${educatorLabel}`;
+  const description = sorteo.description || `Registrate y participá del sorteo de ${educatorLabel}.`;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function PublicSorteoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = await createClient();
-
-  const { data: sorteo } = await supabase
-    .from("public_sorteos")
-    .select("*")
-    .eq("slug", slug)
-    .single();
+  const sorteo = await getPublicSorteo(slug);
 
   if (!sorteo) notFound();
 
   const [{ data: sorteoDetails }, { data: banners }] = await Promise.all([
-    supabase.from("sorteos").select("winners_count, drawn_at").eq("id", sorteo.id).single(),
+    supabase.from("sorteos").select("winners_count, drawn_at, draw_seed").eq("id", sorteo.id).single(),
     supabase.from("active_banners").select("*").eq("placement", "public_sorteo_page"),
   ]);
 
@@ -62,6 +80,14 @@ export default async function PublicSorteoPage({ params }: { params: Promise<{ s
           <RegistrationForm slug={slug} educatorLabel={educatorLabel} winnersCount={winnersCount} />
         )}
         <PrizeRevealCheck slug={slug} alreadyDrawn={alreadyDrawn} educatorLabel={educatorLabel} />
+
+        {alreadyDrawn && sorteoDetails?.draw_seed && (
+          <p className="text-xs text-brand-muted">
+            ✓ Sorteo verificable — semilla pública{" "}
+            <span className="font-mono">{sorteoDetails.draw_seed}</span>. Los ganadores salieron de
+            un algoritmo determinístico sobre la lista de inscriptos, no de una elección manual.
+          </p>
+        )}
 
         {banners && banners.length > 0 && <BannerStrip banners={banners} />}
       </main>

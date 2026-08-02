@@ -3,6 +3,18 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, CodeBatchOrigin, CodeBatchMethod, PrizeCodeSource } from "@/types/database.types";
 
+// Presets keep the UI to a simple dropdown instead of exposing a raw
+// priority number — lower drawn first, so "grande" always lands on position 1.
+export const TIER_PRIORITY: Record<string, number> = {
+  "Premio grande": 0,
+  "Premio mediano": 50,
+};
+
+export function tierPriorityFor(tier: string | null | undefined): number {
+  if (!tier) return 100;
+  return TIER_PRIORITY[tier] ?? 100;
+}
+
 export async function insertCodeBatch(
   supabase: SupabaseClient<Database>,
   params: {
@@ -13,6 +25,8 @@ export async function insertCodeBatch(
     source: PrizeCodeSource;
     codes: string[];
     sorteoId?: string | null;
+    tier?: string | null;
+    tierPriority?: number | null;
   }
 ): Promise<{ inserted: number; error?: string }> {
   const uniqueCodes = Array.from(new Set(params.codes.map((c) => c.trim()).filter(Boolean)));
@@ -44,6 +58,8 @@ export async function insertCodeBatch(
     status: params.sorteoId ? ("available" as const) : ("unassigned" as const),
     created_by: params.createdBy,
     source: params.source,
+    tier: params.tier || null,
+    tier_priority: params.tierPriority ?? tierPriorityFor(params.tier),
   }));
 
   const { data: insertedRows, error: insertError } = await supabase

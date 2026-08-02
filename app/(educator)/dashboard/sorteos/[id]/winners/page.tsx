@@ -3,13 +3,16 @@ import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { DrawFlow } from "@/components/wheel/draw-flow";
+import { LiveParticipantPulse } from "@/components/dashboard/live-participant-pulse";
+import { VerifiableDrawCard } from "@/components/dashboard/verifiable-draw-card";
+import { DownloadReportButton } from "@/components/dashboard/download-report-button";
 import type { DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
 interface WinnerRow {
   participant_id: string;
   position: number;
   participants: { name: string } | { name: string }[] | null;
-  prize_codes: { code: string } | { code: string }[] | null;
+  prize_codes: { code: string; tier: string | null } | { code: string; tier: string | null }[] | null;
 }
 
 export default async function SorteoWinnersPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +22,7 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
 
   const { data: sorteo } = await supabase
     .from("sorteos")
-    .select("id, name, winners_count, drawn_at")
+    .select("id, name, winners_count, drawn_at, draw_seed, draw_participants_hash")
     .eq("id", id)
     .single();
   if (!sorteo) notFound();
@@ -34,14 +37,19 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
   if (sorteo.drawn_at) {
     const { data: winnersData } = await supabase
       .from("raffle_winners")
-      .select("participant_id, position, participants(name), prize_codes(code)")
+      .select("participant_id, position, participants(name), prize_codes(code, tier)")
       .eq("sorteo_id", id)
       .order("position", { ascending: true });
 
     existingWinners = ((winnersData ?? []) as unknown as WinnerRow[]).map((w) => {
       const participant = Array.isArray(w.participants) ? w.participants[0] : w.participants;
       const code = Array.isArray(w.prize_codes) ? w.prize_codes[0] : w.prize_codes;
-      return { participantId: w.participant_id, name: participant?.name ?? "?", code: code?.code ?? null };
+      return {
+        participantId: w.participant_id,
+        name: participant?.name ?? "?",
+        code: code?.code ?? null,
+        tier: code?.tier ?? null,
+      };
     });
   }
 
@@ -57,14 +65,19 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
           { label: "Ganadores" },
         ]}
       />
-      <div>
-        <h1 className="text-2xl font-semibold">Sorteo — {sorteo.name}</h1>
-        <p className="text-sm text-brand-muted">
-          {sorteo.drawn_at
-            ? "Este sorteo ya se realizó."
-            : `${participants?.length ?? 0} inscriptos · se van a sortear ${sorteo.winners_count} ganador(es).`}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Sorteo — {sorteo.name}</h1>
+          <p className="text-sm text-brand-muted">
+            {sorteo.drawn_at
+              ? "Este sorteo ya se realizó."
+              : `${participants?.length ?? 0} inscriptos · se van a sortear ${sorteo.winners_count} ganador(es).`}
+          </p>
+        </div>
+        {sorteo.drawn_at && <DownloadReportButton sorteoId={id} />}
       </div>
+
+      {!sorteo.drawn_at && <LiveParticipantPulse sorteoId={id} initialCount={participants?.length ?? 0} />}
 
       <DrawFlow
         sorteoId={id}
@@ -73,6 +86,10 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
         alreadyDrawn={!!sorteo.drawn_at}
         existingWinners={existingWinners}
       />
+
+      {sorteo.drawn_at && sorteo.draw_seed && (
+        <VerifiableDrawCard seed={sorteo.draw_seed} participantsHash={sorteo.draw_participants_hash} />
+      )}
     </div>
   );
 }

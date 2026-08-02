@@ -38,6 +38,10 @@ export const manualCodesSchema = z.object({
     ),
 });
 
+export const tieredCodesSchema = manualCodesSchema.extend({
+  tier: z.string().trim().max(60).optional().or(z.literal("")),
+});
+
 export const bannerSchema = z.object({
   title: z.string().trim().min(2),
   imageUrl: z.string().trim().url("Tiene que ser una URL válida."),

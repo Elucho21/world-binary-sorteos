@@ -9,6 +9,7 @@ const links = [
   { href: "/dashboard", label: "Mis sorteos", tour: undefined },
   { href: "/dashboard/codes", label: "Cuentas bono", tour: "nav-codes" },
   { href: "/dashboard/team", label: "Mi equipo", tour: "nav-team" },
+  { href: "/dashboard/referidos", label: "Referidos", tour: undefined },
 ];
 
 export function DashboardNav() {

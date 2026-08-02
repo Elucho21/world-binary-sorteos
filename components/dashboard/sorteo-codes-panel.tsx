@@ -15,6 +15,7 @@ interface SorteoCode {
   id: string;
   code: string;
   status: string;
+  tier: string | null;
 }
 
 export function SorteoCodesPanel({
@@ -58,6 +59,19 @@ export function SorteoCodesPanel({
         <form action={uploadFormAction} className="space-y-2">
           <Label htmlFor="codes">O cargar directo para este sorteo</Label>
           <Textarea id="codes" name="codes" rows={2} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
+          <div>
+            <Label htmlFor="tier">Nivel del premio (opcional)</Label>
+            <select
+              id="tier"
+              name="tier"
+              className="w-full rounded-md border border-brand-border bg-brand-surface px-3 py-2 text-sm"
+              defaultValue=""
+            >
+              <option value="">Sin nivel (estándar)</option>
+              <option value="Premio grande">Premio grande — se sortea primero</option>
+              <option value="Premio mediano">Premio mediano</option>
+            </select>
+          </div>
           <Button type="submit" size="sm" variant="secondary" disabled={uploadPending}>
             Cargar
           </Button>
@@ -76,6 +90,7 @@ export function SorteoCodesPanel({
             <div key={c.id} className="flex items-center justify-between border-b border-brand-border/50 py-1">
               <span>{c.code}</span>
               <div className="flex items-center gap-2">
+                {c.tier && <Badge tone="accent">{c.tier}</Badge>}
                 <Badge tone={c.status === "available" ? "success" : c.status === "issued" ? "warning" : "neutral"}>
                   {c.status}
                 </Badge>

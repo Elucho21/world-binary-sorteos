@@ -26,6 +26,7 @@ export type Profile = {
   brand_name: string | null;
   avatar_url: string | null;
   managed_by: string | null;
+  referred_by: string | null;
   created_at: string;
 };
 
@@ -45,6 +46,8 @@ export type Sorteo = {
   max_entries: number | null;
   winners_count: number;
   drawn_at: string | null;
+  draw_seed: string | null;
+  draw_participants_hash: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -79,6 +82,8 @@ export type PrizeCode = {
   batch_id: string | null;
   code: string;
   status: PrizeCodeStatus;
+  tier: string | null;
+  tier_priority: number;
   created_by: string;
   source: PrizeCodeSource;
   issued_to: string | null;
@@ -95,6 +100,8 @@ export type RaffleWinner = {
   prize_code_id: string | null;
   position: number;
   drawn_at: string;
+  original_participant_id: string | null;
+  reassigned_at: string | null;
 };
 
 export type AdminSettings = {
@@ -197,7 +204,7 @@ export type Database = {
         Returns: RegisterParticipantResult;
       };
       check_participant_prize: {
-        Args: { p_slug: string; p_participant_id: string };
+        Args: { p_slug: string; p_participant_id: string; p_ip_hash?: string | null };
         Returns: CheckParticipantPrizeResult;
       };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
