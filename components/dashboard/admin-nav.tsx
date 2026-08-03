@@ -13,6 +13,7 @@ const links = [
   { href: "/admin/banners", label: "Banners" },
   { href: "/admin/audit", label: "Auditoría" },
   { href: "/admin/settings", label: "Config" },
+  { href: "/admin/security", label: "Seguridad" },
 ];
 
 export function AdminNav() {

@@ -2,7 +2,25 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/notifications";
 import { loginSchema, signupSchema } from "@/lib/validation";
+
+async function notifyNewPendingEducatorBestEffort(displayName: string, email: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: settings } = await admin.from("admin_settings").select("support_email").eq("id", true).single();
+    const to = settings?.support_email;
+    if (!to) return;
+    await sendEmail({
+      to,
+      subject: "Nuevo educador esperando aprobación",
+      html: `<p>${displayName} (${email}) se registró como educador/IB y está esperando aprobación.</p><p>Revisalo en /admin/educators.</p>`,
+    });
+  } catch {
+    // Best-effort only — never block signup on this.
+  }
+}
 
 export type AuthActionState = { error?: string; message?: string } | undefined;
 
@@ -35,7 +53,15 @@ export async function login(
     .eq("id", data.user.id)
     .single();
 
-  redirect(profile?.role === "super_admin" ? "/admin" : "/dashboard");
+  if (profile?.role !== "super_admin") {
+    redirect("/dashboard");
+  }
+
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+    redirect("/login/mfa");
+  }
+  redirect("/admin");
 }
 
 export async function signup(
@@ -61,6 +87,8 @@ export async function signup(
   if (error) {
     return { error: error.message };
   }
+
+  void notifyNewPendingEducatorBestEffort(parsed.data.displayName, parsed.data.email);
 
   if (!data.session) {
     return {

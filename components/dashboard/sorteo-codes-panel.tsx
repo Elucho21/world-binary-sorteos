@@ -8,8 +8,9 @@ import {
   type FormState,
 } from "@/app/(educator)/dashboard/codes/actions";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/input";
+import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { CodeTextareaWithPreview } from "@/components/dashboard/code-input-preview";
 
 interface SorteoCode {
   id: string;
@@ -57,8 +58,8 @@ export function SorteoCodesPanel({
         </form>
 
         <form action={uploadFormAction} className="space-y-2">
-          <Label htmlFor="codes">O cargar directo para este sorteo</Label>
-          <Textarea id="codes" name="codes" rows={2} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
+          <p className="text-sm font-medium text-brand-muted">O cargar directo para este sorteo</p>
+          <CodeTextareaWithPreview id="codes" name="codes" rows={2} />
           <div>
             <Label htmlFor="tier">Nivel del premio (opcional)</Label>
             <select

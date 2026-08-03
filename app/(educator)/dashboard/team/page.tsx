@@ -1,10 +1,11 @@
 import { requireApprovedEducator } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InviteTeamForm } from "@/components/dashboard/invite-team-form";
-import { removeTeamMember } from "./actions";
+import { removeTeamMember, resendTeamInvite } from "./actions";
 
 export default async function TeamPage() {
   const profile = await requireApprovedEducator();
@@ -27,6 +28,14 @@ export default async function TeamPage() {
     .eq("managed_by", profile.id)
     .order("created_at", { ascending: false });
 
+  const admin = createAdminClient();
+  const membersWithInviteStatus = await Promise.all(
+    (members ?? []).map(async (member) => {
+      const { data } = await admin.auth.admin.getUserById(member.id);
+      return { ...member, invitePending: !data.user?.last_sign_in_at };
+    })
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -46,26 +55,37 @@ export default async function TeamPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Miembros ({members?.length ?? 0})</CardTitle>
+          <CardTitle>Miembros ({membersWithInviteStatus.length})</CardTitle>
         </CardHeader>
         <div className="space-y-2">
-          {(members ?? []).map((member) => (
+          {membersWithInviteStatus.map((member) => (
             <div
               key={member.id}
-              className="flex items-center justify-between border-b border-brand-border/60 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-border/60 py-2"
             >
               <div>
                 <p>{member.display_name}</p>
-                <Badge tone="accent">Miembro del equipo</Badge>
+                <Badge tone={member.invitePending ? "warning" : "accent"}>
+                  {member.invitePending ? "Invitación pendiente" : "Miembro del equipo"}
+                </Badge>
               </div>
-              <form action={removeTeamMember.bind(null, member.id)}>
-                <Button type="submit" size="sm" variant="danger">
-                  Quitar
-                </Button>
-              </form>
+              <div className="flex gap-2">
+                {member.invitePending && (
+                  <form action={resendTeamInvite.bind(null, member.id)}>
+                    <Button type="submit" size="sm" variant="secondary">
+                      Reenviar invitación
+                    </Button>
+                  </form>
+                )}
+                <form action={removeTeamMember.bind(null, member.id)}>
+                  <Button type="submit" size="sm" variant="danger">
+                    Quitar
+                  </Button>
+                </form>
+              </div>
             </div>
           ))}
-          {(!members || members.length === 0) && (
+          {membersWithInviteStatus.length === 0 && (
             <p className="text-sm text-brand-muted">Todavía no invitaste a nadie.</p>
           )}
         </div>
