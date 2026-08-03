@@ -1,8 +1,4 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { ExportCsvButton } from "@/components/dashboard/export-csv-button";
 
 interface LeadRow {
@@ -13,25 +9,15 @@ interface LeadRow {
   fecha: string;
 }
 
-export function LeadsTable({ rows }: { rows: LeadRow[] }) {
-  const [query, setQuery] = useState("");
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => r.nombre.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
-  }, [rows, query]);
-
+// Search + pagination now live server-side in app/(admin)/admin/leads/page.tsx
+// (the participants table can be much larger than the 2000-row client cap
+// this used to have) — `rows` is already the current page, `exportRows` is
+// every row matching the current search (capped separately, for the CSV).
+export function LeadsTable({ rows, exportRows }: { rows: LeadRow[]; exportRows: LeadRow[] }) {
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre o email..."
-          className="max-w-xs"
-        />
-        <ExportCsvButton filename="leads-world-binary.csv" rows={filtered as unknown as Record<string, unknown>[]} />
+      <div className="flex justify-end">
+        <ExportCsvButton filename="leads-world-binary.csv" rows={exportRows as unknown as Record<string, unknown>[]} />
       </div>
 
       <Card className="overflow-x-auto p-0">
@@ -45,7 +31,7 @@ export function LeadsTable({ rows }: { rows: LeadRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
+            {rows.map((row, i) => (
               <tr key={i} className="border-b border-brand-border/60">
                 <td className="px-4 py-3">{row.nombre}</td>
                 <td className="px-4 py-3">{row.email}</td>
@@ -53,10 +39,10 @@ export function LeadsTable({ rows }: { rows: LeadRow[] }) {
                 <td className="px-4 py-3">{row.educador}</td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-brand-muted">
-                  {rows.length === 0 ? "Todavía no hay leads." : "Sin resultados para esa búsqueda."}
+                  {exportRows.length === 0 ? "Todavía no hay leads." : "Sin resultados para esa búsqueda."}
                 </td>
               </tr>
             )}

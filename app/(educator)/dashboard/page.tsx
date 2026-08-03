@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   const [{ data: sorteos }, { count: availableCodeCount }] = await Promise.all([
     supabase
       .from("sorteos")
-      .select("id, name, slug, status, created_at")
+      .select("id, name, slug, status, created_at, ends_at, winners_count, drawn_at")
       .eq("educator_id", educatorId)
       .order("created_at", { ascending: false }),
     supabase
@@ -41,6 +41,27 @@ export default async function DashboardPage() {
       .eq("educator_id", educatorId)
       .eq("status", "available"),
   ]);
+
+  const EXPIRY_WARNING_WINDOW_MS = 48 * 60 * 60 * 1000;
+  // Server Component: runs once per request, not subject to the re-render
+  // purity concerns this rule targets in client components.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  const soonToExpire = (sorteos ?? []).filter((s) => {
+    if (s.status !== "active" || s.drawn_at || !s.ends_at) return false;
+    const msLeft = new Date(s.ends_at).getTime() - now;
+    return msLeft > 0 && msLeft <= EXPIRY_WARNING_WINDOW_MS;
+  });
+  const expiryWarnings = await Promise.all(
+    soonToExpire.map(async (s) => {
+      const { count } = await supabase
+        .from("prize_codes")
+        .select("id", { count: "exact", head: true })
+        .eq("sorteo_id", s.id)
+        .eq("status", "available");
+      return { ...s, availableCount: count ?? 0 };
+    })
+  ).then((rows) => rows.filter((s) => s.availableCount < s.winners_count));
 
   const hasSorteo = (sorteos ?? []).length > 0;
   const hasActiveSorteo = (sorteos ?? []).some((s) => s.status === "active");
@@ -67,6 +88,25 @@ export default async function DashboardPage() {
           <Button>Nuevo sorteo</Button>
         </Link>
       </div>
+
+      {expiryWarnings.length > 0 && (
+        <Card className="border-brand-danger/30 bg-brand-danger/5">
+          <CardTitle>⚠️ Sorteos por vencer sin premios suficientes</CardTitle>
+          <CardDescription className="mt-1">
+            Se cierran en menos de 48 horas y no tienen cuentas bono disponibles para cubrir a
+            todos los ganadores.
+          </CardDescription>
+          <ul className="mt-3 space-y-1">
+            {expiryWarnings.map((s) => (
+              <li key={s.id}>
+                <Link href={`/dashboard/sorteos/${s.id}/codes`} className="text-sm text-brand-primary hover:underline">
+                  {s.name} — {s.availableCount}/{s.winners_count} premios cargados
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {showChecklist && (
         <Card data-tour="checklist">

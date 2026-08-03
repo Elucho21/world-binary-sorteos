@@ -26,7 +26,6 @@ export type Profile = {
   brand_name: string | null;
   avatar_url: string | null;
   managed_by: string | null;
-  referred_by: string | null;
   created_at: string;
 };
 
@@ -207,6 +206,8 @@ export type Database = {
         Args: { p_slug: string; p_participant_id: string; p_ip_hash?: string | null };
         Returns: CheckParticipantPrizeResult;
       };
+      register_magic_link_attempt: { Args: { p_ip_hash: string }; Returns: boolean };
+      get_database_size_bytes: { Args: Record<string, never>; Returns: number };
       is_super_admin: { Args: Record<string, never>; Returns: boolean };
     };
     Enums: Record<string, never>;

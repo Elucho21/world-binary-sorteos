@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { adminUploadToWallet, adminUploadToSorteo, type FormState } from "@/app/(admin)/admin/codes/actions";
 import { Button } from "@/components/ui/button";
-import { Label, Textarea, Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/input";
+import { CodeTextareaWithPreview, CodeFileInputWithPreview } from "@/components/dashboard/code-input-preview";
 
 interface EducatorOption {
   id: string;
@@ -36,14 +37,8 @@ export function WalletUploadForm({ educators }: { educators: EducatorOption[] })
           ))}
         </select>
       </div>
-      <div>
-        <Label htmlFor="wallet-codes">Códigos (uno por línea)</Label>
-        <Textarea id="wallet-codes" name="codes" rows={4} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
-      </div>
-      <div>
-        <Label htmlFor="wallet-file">...o archivo</Label>
-        <Input id="wallet-file" name="file" type="file" accept=".csv,.txt" />
-      </div>
+      <CodeTextareaWithPreview id="wallet-codes" name="codes" />
+      <CodeFileInputWithPreview id="wallet-file" name="file" />
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
       {state?.success && <p className="text-sm text-brand-success">{state.success}</p>}
       <Button type="submit" size="sm" disabled={pending}>
@@ -74,14 +69,8 @@ export function SorteoUploadForm({ sorteos }: { sorteos: SorteoOption[] }) {
           ))}
         </select>
       </div>
-      <div>
-        <Label htmlFor="sorteo-codes">Códigos (uno por línea)</Label>
-        <Textarea id="sorteo-codes" name="codes" rows={4} placeholder={"WB-BONUS-0001\nWB-BONUS-0002"} />
-      </div>
-      <div>
-        <Label htmlFor="sorteo-file">...o archivo</Label>
-        <Input id="sorteo-file" name="file" type="file" accept=".csv,.txt" />
-      </div>
+      <CodeTextareaWithPreview id="sorteo-codes" name="codes" />
+      <CodeFileInputWithPreview id="sorteo-file" name="file" />
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
       {state?.success && <p className="text-sm text-brand-success">{state.success}</p>}
       <Button type="submit" size="sm" disabled={pending}>

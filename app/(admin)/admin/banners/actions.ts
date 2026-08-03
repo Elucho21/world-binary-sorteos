@@ -44,6 +44,39 @@ export async function createBanner(_prev: FormState, formData: FormData): Promis
   return undefined;
 }
 
+export async function updateBanner(bannerId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  await requireSuperAdmin();
+  const parsed = bannerSchema.safeParse({
+    title: formData.get("title"),
+    imageUrl: formData.get("imageUrl"),
+    linkUrl: formData.get("linkUrl"),
+    placement: formData.get("placement"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisá los datos del banner." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("banners")
+    .update({
+      title: parsed.data.title,
+      image_url: parsed.data.imageUrl,
+      link_url: parsed.data.linkUrl || null,
+      placement: parsed.data.placement,
+      starts_at: toTimestamp(parsed.data.startsAt),
+      ends_at: toTimestamp(parsed.data.endsAt),
+    })
+    .eq("id", bannerId);
+
+  if (error) return { error: "No se pudo guardar el banner." };
+
+  revalidatePath("/admin/banners");
+  return undefined;
+}
+
 export async function toggleBannerActive(bannerId: string, isActive: boolean) {
   await requireSuperAdmin();
   const supabase = await createClient();
