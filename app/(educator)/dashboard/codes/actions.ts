@@ -90,6 +90,10 @@ export async function assignFromPool(
 
   revalidatePath("/dashboard/codes");
   revalidatePath(`/dashboard/sorteos/${sorteoId}/codes`);
+  revalidatePath(`/dashboard/sorteos/${sorteoId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/admin/sorteos");
+  revalidatePath("/admin/codes");
   return { success: `Se asignaron ${ids.length} código(s).` };
 }
 
