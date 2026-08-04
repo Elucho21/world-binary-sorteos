@@ -1,9 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { adminUploadToWallet, adminUploadToSorteo, type FormState } from "@/app/(admin)/admin/codes/actions";
+import {
+  adminUploadToWallet,
+  adminUploadToSorteo,
+  adminAssignFromWallet,
+  type FormState,
+} from "@/app/(admin)/admin/codes/actions";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/input";
+import { Input, Label } from "@/components/ui/input";
 import { CodeTextareaWithPreview, CodeFileInputWithPreview } from "@/components/dashboard/code-input-preview";
 
 interface EducatorOption {
@@ -75,6 +80,40 @@ export function SorteoUploadForm({ sorteos }: { sorteos: SorteoOption[] }) {
       {state?.success && <p className="text-sm text-brand-success">{state.success}</p>}
       <Button type="submit" size="sm" disabled={pending}>
         {pending ? "Cargando..." : "Cargar directo al sorteo"}
+      </Button>
+    </form>
+  );
+}
+
+export function AssignFromWalletForm({ sorteos }: { sorteos: SorteoOption[] }) {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(adminAssignFromWallet, undefined);
+
+  return (
+    <form action={formAction} className="space-y-3">
+      <div>
+        <Label htmlFor="wallet-assign-sorteoId">Sorteo</Label>
+        <select
+          id="wallet-assign-sorteoId"
+          name="sorteoId"
+          required
+          className="w-full rounded-md border border-brand-border bg-brand-surface px-3 py-2 text-sm text-brand-text"
+        >
+          <option value="">Elegí un sorteo...</option>
+          {sorteos.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <Label htmlFor="wallet-assign-quantity">Cantidad a mover</Label>
+        <Input id="wallet-assign-quantity" name="quantity" type="number" min={1} defaultValue={1} />
+      </div>
+      {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}
+      {state?.success && <p className="text-sm text-brand-success">{state.success}</p>}
+      <Button type="submit" size="sm" disabled={pending}>
+        {pending ? "Asignando..." : "Asignar al sorteo"}
       </Button>
     </form>
   );
