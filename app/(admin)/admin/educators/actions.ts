@@ -44,3 +44,34 @@ export async function bulkSetEducatorStatus(profileIds: string[], status: Profil
   revalidatePath("/admin/educators");
   revalidatePath("/admin/audit");
 }
+
+// Only lets a super admin delete a request that never became a real,
+// approved account — approved educators (who may already own sorteos,
+// participants, prize codes) go through Rechazar instead, never this.
+export async function deleteEducatorRequest(profileId: string) {
+  const admin = await requireSuperAdmin();
+  const supabase = await createClient();
+
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id, status, managed_by")
+    .eq("id", profileId)
+    .single();
+
+  if (!target || target.managed_by || target.status === "approved") {
+    throw new Error("Esta cuenta no se puede eliminar desde acá.");
+  }
+
+  await supabase.from("audit_log").insert({
+    actor_id: admin.id,
+    action: "educator_request_deleted",
+    target_id: profileId,
+  });
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.auth.admin.deleteUser(profileId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/educators");
+  revalidatePath("/admin/audit");
+}

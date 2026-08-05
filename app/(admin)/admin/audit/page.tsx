@@ -40,6 +40,7 @@ export default async function AdminAuditPage() {
               <th className="px-4 py-3">Quién</th>
               <th className="px-4 py-3">Acción</th>
               <th className="px-4 py-3">Sobre</th>
+              <th className="px-4 py-3">Detalle</th>
             </tr>
           </thead>
           <tbody>
@@ -51,12 +52,15 @@ export default async function AdminAuditPage() {
                   <td className="px-4 py-3">{actor?.display_name ?? "—"}</td>
                   <td className="px-4 py-3 font-mono text-xs">{row.action}</td>
                   <td className="px-4 py-3 font-mono text-xs">{row.target_id ?? "—"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-brand-muted">
+                    {row.metadata ? JSON.stringify(row.metadata) : "—"}
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-brand-muted">
+                <td colSpan={5} className="px-4 py-6 text-center text-brand-muted">
                   Todavía no hay eventos registrados.
                 </td>
               </tr>

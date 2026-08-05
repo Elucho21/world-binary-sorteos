@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { setEducatorStatus } from "@/app/(admin)/admin/educators/actions";
+import { setEducatorStatus, deleteEducatorRequest } from "@/app/(admin)/admin/educators/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/dashboard/delete-button";
 import type { ProfileStatus } from "@/types/database.types";
 
 interface EducatorRow {
@@ -12,7 +13,6 @@ interface EducatorRow {
   brand_name: string | null;
   status: ProfileStatus;
   created_at: string;
-  referrerName?: string | null;
 }
 
 const statusTone: Record<ProfileStatus, "warning" | "success" | "danger"> = {
@@ -70,20 +70,24 @@ export function EducatorsList({ educators }: { educators: EducatorRow[] }) {
       <div className="space-y-2">
         {filtered.map((educator) => (
           <div key={educator.id} className="flex items-center justify-between border-b border-brand-border/60 py-2">
-            <div>
-              <p>{educator.display_name}</p>
-              {educator.referrerName && (
-                <p className="text-xs text-brand-muted">Referido por {educator.referrerName}</p>
-              )}
-            </div>
+            <p>{educator.display_name}</p>
             <div className="flex items-center gap-2">
               <Badge tone={statusTone[educator.status]}>{statusLabel[educator.status]}</Badge>
               {educator.status === "rejected" && (
-                <form action={setEducatorStatus.bind(null, educator.id, "approved")}>
-                  <Button type="submit" size="sm" variant="secondary">
-                    Aprobar igual
-                  </Button>
-                </form>
+                <>
+                  <form action={setEducatorStatus.bind(null, educator.id, "approved")}>
+                    <Button type="submit" size="sm" variant="secondary">
+                      Aprobar igual
+                    </Button>
+                  </form>
+                  <ConfirmButton
+                    action={deleteEducatorRequest.bind(null, educator.id)}
+                    confirmText={`¿Eliminar por completo la cuenta de ${educator.display_name}? Esto la borra, no se puede deshacer.`}
+                    variant="ghost"
+                  >
+                    Eliminar
+                  </ConfirmButton>
+                </>
               )}
             </div>
           </div>

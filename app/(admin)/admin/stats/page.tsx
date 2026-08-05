@@ -1,6 +1,5 @@
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { getCachedAdminStats } from "@/lib/cache";
 import { StatsDashboard } from "@/components/admin/stats-dashboard";
 
 interface ParticipantRow {
@@ -15,15 +14,27 @@ export default async function AdminStatsPage() {
   await requireSuperAdmin();
   const supabase = await createClient();
 
-  const { participants, totalParticipants, totalIssued, totalRedeemed, prizeCodes } = await getCachedAdminStats();
+  const [
+    { data: participants },
+    { count: totalParticipants },
+    { count: totalIssued },
+    { count: totalRedeemed },
+    { data: prizeCodes },
+    { data: educatorsData },
+  ] = await Promise.all([
+    supabase
+      .from("participants")
+      .select("email, sorteo_id, educator_id, created_at, sorteos(name)")
+      .order("created_at", { ascending: false })
+      .limit(5000),
+    supabase.from("participants").select("id", { count: "exact", head: true }),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
+    supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
+    supabase.from("prize_codes").select("status, educator_id"),
+    supabase.from("profiles").select("id, display_name").eq("role", "educator").order("display_name", { ascending: true }),
+  ]);
 
-  const { data: educatorsData } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .eq("role", "educator")
-    .order("display_name", { ascending: true });
-
-  const participantRows = (participants as unknown as ParticipantRow[]).map((p) => {
+  const participantRows = ((participants ?? []) as unknown as ParticipantRow[]).map((p) => {
     const sorteo = Array.isArray(p.sorteos) ? p.sorteos[0] : p.sorteos;
     return {
       email: p.email,
@@ -34,7 +45,7 @@ export default async function AdminStatsPage() {
     };
   });
 
-  const prizeCodeRows = prizeCodes.map((c) => ({ status: c.status, educatorId: c.educator_id }));
+  const prizeCodeRows = (prizeCodes ?? []).map((c) => ({ status: c.status, educatorId: c.educator_id }));
   const educators = (educatorsData ?? []).map((e) => ({ id: e.id, name: e.display_name ?? "—" }));
 
   return (
@@ -48,9 +59,9 @@ export default async function AdminStatsPage() {
         participants={participantRows}
         prizeCodes={prizeCodeRows}
         educators={educators}
-        totalParticipants={totalParticipants}
-        totalIssued={totalIssued}
-        totalRedeemed={totalRedeemed}
+        totalParticipants={totalParticipants ?? 0}
+        totalIssued={totalIssued ?? 0}
+        totalRedeemed={totalRedeemed ?? 0}
       />
     </div>
   );

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { registrationSchema } from "@/lib/validation";
-import { hasMxRecord } from "@/lib/mx-check";
+import { hasMxRecord, isDisposableDomain } from "@/lib/mx-check";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { sendCrmWebhook } from "@/lib/webhook";
 import type { RegisterParticipantResult } from "@/types/database.types";
@@ -19,7 +20,10 @@ function friendlyError(message: string) {
 
 async function notifyRegistrationBestEffort(payload: { name: string; email: string; slug: string }) {
   try {
-    const supabase = await createClient();
+    // admin_settings.webhook_url is only readable by super admins now
+    // (RLS, v1.8) — this read is server-only and never exposed to the
+    // client, just used internally to fire the CRM ping.
+    const supabase = createAdminClient();
     const { data: settings } = await supabase.from("admin_settings").select("webhook_url").eq("id", true).single();
     const url = settings?.webhook_url;
     if (!url) return;
@@ -76,6 +80,13 @@ export async function POST(request: Request) {
   const turnstileOk = await verifyTurnstileToken(parsed.data.turnstileToken, ip);
   if (!turnstileOk) {
     return NextResponse.json({ error: "No pudimos verificar que sos una persona. Probá de nuevo." }, { status: 400 });
+  }
+
+  if (isDisposableDomain(parsed.data.email)) {
+    return NextResponse.json(
+      { error: "Ese dominio de email temporal no está permitido. Usá tu email real." },
+      { status: 400 }
+    );
   }
 
   const mxOk = await hasMxRecord(parsed.data.email);

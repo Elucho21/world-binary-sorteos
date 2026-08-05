@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { randomBytes, createHash } from "node:crypto";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sorteoSchema } from "@/lib/validation";
 import { sendCrmWebhook } from "@/lib/webhook";
 
@@ -306,7 +307,10 @@ async function notifyDrawResultsBestEffort(
   results: DrawnWinner[]
 ) {
   try {
-    const { data: settings } = await supabase.from("admin_settings").select("webhook_url").eq("id", true).single();
+    // admin_settings.webhook_url is only readable by super admins (RLS) —
+    // read it with the service-role client instead of the caller's.
+    const adminSupabase = createAdminClient();
+    const { data: settings } = await adminSupabase.from("admin_settings").select("webhook_url").eq("id", true).single();
     const url = settings?.webhook_url;
     if (!url) return;
 

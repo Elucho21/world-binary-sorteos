@@ -46,9 +46,19 @@ export async function requireApprovedEducator(): Promise<Profile> {
   return profile;
 }
 
+// Super admins who enrolled TOTP (see /admin/security) must complete the
+// aal2 challenge before touching anything under /admin — this catches
+// direct navigation/refresh, not just the login redirect in (auth)/actions.ts.
 export async function requireSuperAdmin(): Promise<Profile> {
   const profile = await requireAuth();
   if (profile.role !== "super_admin") redirect("/dashboard");
+
+  const supabase = await createClient();
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== "aal2") {
+    redirect("/login/mfa");
+  }
+
   return profile;
 }
 

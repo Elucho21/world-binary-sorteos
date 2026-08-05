@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExportCsvButton } from "@/components/dashboard/export-csv-button";
-import { markCodeRedeemed } from "@/app/(educator)/dashboard/sorteos/[id]/participants/actions";
+import {
+  markCodeRedeemed,
+  bulkMarkCodeRedeemed,
+  updateParticipantEmail,
+} from "@/app/(educator)/dashboard/sorteos/[id]/participants/actions";
 
 export interface ParticipantRow {
   id: string;
@@ -17,18 +21,105 @@ export interface ParticipantRow {
   prize_code: { id: string; code: string; status: string; redeemed_at: string | null } | null;
 }
 
-export function ParticipantsTable({ sorteoId, participants }: { sorteoId: string; participants: ParticipantRow[] }) {
-  const [query, setQuery] = useState("");
+function EditableEmail({ sorteoId, participant }: { sorteoId: string; participant: ParticipantRow }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return participants;
-    return participants.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+  if (!isEditing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        className="text-left hover:underline"
+        title="Corregir email"
+      >
+        {participant.email}
+      </button>
     );
-  }, [participants, query]);
+  }
 
-  const csvRows = filtered.map((p) => ({
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    startTransition(async () => {
+      try {
+        await updateParticipantEmail(sorteoId, participant.id, formData);
+        setIsEditing(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo actualizar el email.");
+      }
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-1">
+      <Input
+        name="email"
+        type="email"
+        defaultValue={participant.email}
+        className="h-8 w-48 py-1 text-sm"
+        required
+        autoFocus
+      />
+      <Button type="submit" size="sm" variant="secondary" disabled={isPending}>
+        Guardar
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+        Cancelar
+      </Button>
+      {error && <span className="text-xs text-brand-danger">{error}</span>}
+    </form>
+  );
+}
+
+// `participants` is already server-side searched + paginated (current page
+// only) — see app/(educator)/dashboard/sorteos/[id]/participants/page.tsx.
+// `exportRows` is every row matching the current search, for the CSV.
+export function ParticipantsTable({
+  sorteoId,
+  participants,
+  exportRows,
+  sorteoDrawn,
+}: {
+  sorteoId: string;
+  participants: ParticipantRow[];
+  exportRows: ParticipantRow[];
+  sorteoDrawn: boolean;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isPending, startTransition] = useTransition();
+
+  const redeemableSelected = useMemo(
+    () =>
+      participants
+        .filter((p) => selected.has(p.id) && p.prize_code && p.prize_code.status !== "redeemed")
+        .map((p) => p.prize_code!.id),
+    [participants, selected]
+  );
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => (prev.size === participants.length ? new Set() : new Set(participants.map((p) => p.id))));
+  }
+
+  function bulkRedeem() {
+    startTransition(async () => {
+      await bulkMarkCodeRedeemed(sorteoId, redeemableSelected);
+      setSelected(new Set());
+    });
+  }
+
+  const csvRows = exportRows.map((p) => ({
     nombre: p.name,
     email: p.email,
     ganador: p.position ? `#${p.position}` : "",
@@ -39,13 +130,12 @@ export function ParticipantsTable({ sorteoId, participants }: { sorteoId: string
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre o email..."
-          className="max-w-xs"
-        />
+      <div className="flex justify-end gap-2">
+        {redeemableSelected.length > 0 && (
+          <Button type="button" size="sm" disabled={isPending} onClick={bulkRedeem}>
+            Marcar canjeados ({redeemableSelected.length})
+          </Button>
+        )}
         <ExportCsvButton filename="participantes.csv" rows={csvRows} />
       </div>
 
@@ -53,6 +143,14 @@ export function ParticipantsTable({ sorteoId, participants }: { sorteoId: string
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-brand-border text-brand-muted">
             <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="accent-brand-primary"
+                  checked={participants.length > 0 && selected.size === participants.length}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Ganador</th>
@@ -62,10 +160,20 @@ export function ParticipantsTable({ sorteoId, participants }: { sorteoId: string
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => (
+            {participants.map((p) => (
               <tr key={p.id} className="border-b border-brand-border/60">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    className="accent-brand-primary"
+                    checked={selected.has(p.id)}
+                    onChange={() => toggle(p.id)}
+                  />
+                </td>
                 <td className="px-4 py-3">{p.name}</td>
-                <td className="px-4 py-3">{p.email}</td>
+                <td className="px-4 py-3">
+                  {sorteoDrawn ? p.email : <EditableEmail sorteoId={sorteoId} participant={p} />}
+                </td>
                 <td className="px-4 py-3">
                   {p.position ? <Badge tone="success">#{p.position}</Badge> : <span className="text-brand-muted">—</span>}
                 </td>
@@ -90,10 +198,10 @@ export function ParticipantsTable({ sorteoId, participants }: { sorteoId: string
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {participants.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-brand-muted">
-                  {participants.length === 0 ? "Todavía no hay participantes." : "Sin resultados para esa búsqueda."}
+                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
+                  {exportRows.length === 0 ? "Todavía no hay participantes." : "Sin resultados para esa búsqueda."}
                 </td>
               </tr>
             )}

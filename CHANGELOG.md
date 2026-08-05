@@ -150,7 +150,7 @@ todos los inscriptos.
   "contraseña incorrecta"; y el mensaje post-registro ya no promete un
   mail de confirmación, con un botón directo a Ingresar.
 
-## v1.7 — Seguridad, velocidad, y negocio (sorteos con nivel, referidos, verificables)
+## v1.7 — Seguridad, velocidad, y negocio (sorteos con nivel, verificables)
 
 **UX**
 - `og:image`/`og:title` dinámicos por sorteo (`next/og`) para que el link de
@@ -166,8 +166,6 @@ todos los inscriptos.
   competir con el de registro.
 
 **Velocidad**
-- Estadísticas de sorteo y globales cacheadas ~60s (`unstable_cache`) en vez
-  de recalcularse en cada carga.
 - El QR de cada sorteo se cachea (el contenido es una función pura de la
   URL, así que no hace falta regenerarlo en cada visita).
 
@@ -179,8 +177,6 @@ todos los inscriptos.
   sortear.
 - Story de Instagram y post de Facebook generados (además del QR + texto de
   WhatsApp que ya existía) desde la sección Compartir de cada sorteo.
-- Programa de referidos entre educadores: cada educador tiene su link de
-  invitación (`/dashboard/referidos`) y ve a quién trajo a la plataforma.
 
 **Sorteos + trading**
 - Sorteo verificable: cada draw guarda la semilla del algoritmo (mulberry32
@@ -201,7 +197,84 @@ todos los inscriptos.
   más que la cantidad de ganadores.
 - Migración `0005_v1_7_improvements.sql`.
 
-## v1.8 — Anular ganador en vivo, ruleta legible y panel de admin más prolijo
+## v1.7.1 — Ajustes post-deploy
+
+- Se sacó el cacheo de estadísticas (`/admin/stats` y
+  `/dashboard/sorteos/[id]/stats`) que se había sumado en v1.7: volvieron a
+  las queries directas de siempre. Se sospecha que `unstable_cache` no se
+  comporta bien en el runtime de Netlify para este proyecto; el reporte de
+  valor/ROI se mantiene, ahora calculado sin caché.
+- Se sacó el programa de referidos entre educadores de v1.7 (no era lo
+  pedido). Migración `0006_remove_referral_program.sql` revierte la
+  columna `profiles.referred_by` y el trigger asociado.
+- Eliminar solicitudes de educador: en `/admin/educators`, además de
+  aprobar/rechazar ahora se puede borrar por completo una cuenta pendiente
+  o rechazada (nunca una aprobada, para no tocar cuentas con datos
+  reales) — borra el usuario de Auth vía el cliente de servicio.
+
+## v1.8 — Seguridad, edición inline, acciones en lote y notificaciones por email
+
+**Seguridad**
+- `admin_settings` ya no es legible por cualquiera sin login: la policy de
+  `select` pasó de `using (true)` a `using (is_super_admin())` — el
+  `webhook_url` del CRM interno de World Binary dejó de estar expuesto vía
+  la API REST de Supabase a cualquiera que la pegara sin pasar por el
+  panel. El disparo del webhook en `app/api/register/route.ts` y la
+  lectura de cuota (`check-quota.mts`) pasaron a leerlo con el cliente de
+  service role en vez del cliente anon.
+- Rate limiting en el pedido de magic link de `/mis-premios`
+  (`register_magic_link_attempt()`, mismo mecanismo que `spin_attempts`).
+- Filtro de dominios de email descartables/temporales (mailinator y
+  similares) en el registro público, además del chequeo de MX existente.
+- 2FA (TOTP) opcional para cuentas de super admin, activable desde
+  `/admin/security` (MFA nativo de Supabase Auth); el login pide el
+  código extra en `/login/mfa` cuando está activado.
+
+**UX**
+- Editar banners existentes (antes solo se podía crear/pausar/borrar).
+- Reenviar invitación de equipo para quien todavía no la aceptó, y
+  mensajes de error más específicos al invitar (email ya registrado,
+  límite de envío de Supabase, email inválido).
+- Corregir el email de un participante desde la tabla de "Participantes"
+  de cada sorteo, antes de sortear.
+
+**Funcionalidad**
+- Alerta en el dashboard del educador si un sorteo activo está por vencer
+  (menos de 48hs) sin cuentas bono suficientes cargadas para cubrir a
+  todos los ganadores.
+- Vista previa (códigos únicos vs. duplicados en el texto/archivo pegado)
+  antes de confirmar una carga masiva de códigos en `/admin/codes` y en
+  "Premios" de cada sorteo.
+- Acciones en lote ("marcar canjeados") sobre participantes seleccionados
+  en la tabla de un sorteo.
+- Botón "Probar webhook" en `/admin/settings` + columna de detalle
+  (`metadata`) en `/admin/audit`, que antes se guardaba pero no se
+  mostraba.
+
+**Notificaciones por email**
+- `lib/notifications.ts`: envío vía la API HTTP de Resend, env-gated
+  (`RESEND_API_KEY`) — igual que Turnstile, queda inerte si no está
+  configurado. Usado para: aviso de stock bajo de premios (Netlify
+  Scheduled Function cada 6hs), aviso de educador nuevo pendiente de
+  aprobación, reenvío de invitación de equipo, y alerta temprana de
+  cuota de base de datos (Netlify Scheduled Function diaria, contra el
+  límite de 500MB del plan free de Supabase).
+
+**Servidores y velocidad**
+- Índices faltantes: `prize_codes(sorteo_id, status)` (el filtro más
+  frecuente del proyecto) y `participants(lower(email))` (usado en cada
+  login de Mis Premios).
+- Paginación + búsqueda server-side en `/admin/leads` y en la tabla de
+  participantes de un sorteo (antes traían todo sin límite y filtraban en
+  el cliente).
+
+**Otros**
+- `npm run seed:dev`: script reproducible que crea un super admin, un
+  educador aprobado y un sorteo de ejemplo con premios en un proyecto
+  Supabase nuevo, sin tener que hacerlo a mano por la UI cada vez.
+- Migración `0007_v1_8_improvements.sql`.
+
+## v1.9 — Anular ganador en vivo, ruleta legible y panel de admin más prolijo
 
 **UX / flujo del sorteo en vivo**
 - El educador puede anular a un ganador que no está presente en el evento y
@@ -229,25 +302,17 @@ todos los inscriptos.
 
 - Mecánica de sorteo alternativa (máquina tipo casino o dado de "infinitos
   lados") como opción visual además de la ruleta — evaluado y pospuesto en
-  v1.8 por alcance/riesgo, a definir en una sesión aparte.
-- Notificaciones por email (stock bajo de códigos, alta de educador
-  nuevo).
+  v1.9 por alcance/riesgo, a definir en una sesión aparte.
 - Página pública de "educadores destacados".
-- Loop de referidos para participantes (giro extra por traer un amigo —
-  distinto del programa de referidos entre educadores de v1.7).
+- Loop de referidos (giro extra por traer un amigo).
 - Soporte multi-idioma (descartado por ahora).
 - Barra de progreso visual en "Premios" (cuántos códigos cargados vs.
   necesarios).
-- Alerta en el dashboard si un sorteo activo está por vencer sin premios
-  cargados o sin sortearse.
-- 2FA (TOTP) opcional para cuentas de super admin.
-- Alerta temprana de cuota de Netlify/Supabase (después de haberla
-  agotado una vez).
+- Resumen semanal automático por email al educador.
+- Insignia/certificado de "sorteo verificado" para redes.
+- Alerta de cuota de banda ancha/minutos de build de Netlify (la de base
+  de datos de Supabase ya está cubierta desde v1.8) — necesitaría wirear
+  la API de cuenta de Netlify con un token propio.
 - Ruleta en vivo visible para todos los espectadores en tiempo real (vía
   Supabase Realtime), sincronizada con el momento en que el educador
   sortea.
-- 2FA (TOTP) opcional para cuentas de super admin.
-- Alerta temprana de cuota de Netlify/Supabase.
-- Alerta en el dashboard si un sorteo activo está por vencer sin premios
-  cargados o sin sortearse.
-- Barra de progreso visual en "Premios".

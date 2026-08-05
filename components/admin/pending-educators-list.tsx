@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { setEducatorStatus, bulkSetEducatorStatus } from "@/app/(admin)/admin/educators/actions";
+import { setEducatorStatus, bulkSetEducatorStatus, deleteEducatorRequest } from "@/app/(admin)/admin/educators/actions";
 import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/dashboard/delete-button";
 
 interface PendingEducator {
   id: string;
@@ -95,6 +96,13 @@ export function PendingEducatorsList({ educators }: { educators: PendingEducator
                 Rechazar
               </Button>
             </form>
+            <ConfirmButton
+              action={deleteEducatorRequest.bind(null, educator.id)}
+              confirmText={`¿Eliminar por completo la solicitud de ${educator.display_name}? Esto borra la cuenta, no se puede deshacer.`}
+              variant="ghost"
+            >
+              Eliminar
+            </ConfirmButton>
           </div>
         </div>
       ))}
