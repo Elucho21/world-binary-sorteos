@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sorteoSchema } from "@/lib/validation";
@@ -56,4 +57,25 @@ export async function adminCreateSorteo(_prev: FormState, formData: FormData): P
   }
 
   redirect(`/dashboard/sorteos/${data.id}`);
+}
+
+export async function adminDeleteSorteo(sorteoId: string) {
+  const admin = await requireSuperAdmin();
+  const supabase = await createClient();
+  const { error } = await supabase.from("sorteos").delete().eq("id", sorteoId);
+  if (error) throw new Error(error.message);
+  await supabase.from("audit_log").insert({ actor_id: admin.id, action: "sorteo_deleted", target_id: sorteoId });
+  revalidatePath("/admin/sorteos");
+}
+
+export async function adminBulkDeleteSorteos(sorteoIds: string[]) {
+  const admin = await requireSuperAdmin();
+  if (sorteoIds.length === 0) return;
+  const supabase = await createClient();
+  const { error } = await supabase.from("sorteos").delete().in("id", sorteoIds);
+  if (error) throw new Error(error.message);
+  await supabase
+    .from("audit_log")
+    .insert(sorteoIds.map((id) => ({ actor_id: admin.id, action: "sorteo_deleted", target_id: id })));
+  revalidatePath("/admin/sorteos");
 }

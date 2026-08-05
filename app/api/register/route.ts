@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { registrationSchema } from "@/lib/validation";
 import { hasMxRecord } from "@/lib/mx-check";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { sendCrmWebhook } from "@/lib/webhook";
 import type { RegisterParticipantResult } from "@/types/database.types";
 
 function friendlyError(message: string) {
@@ -16,22 +17,32 @@ function friendlyError(message: string) {
   return "No se pudo procesar tu registro. Intentá de nuevo.";
 }
 
-async function fireWebhookBestEffort(payload: Record<string, unknown>) {
+async function notifyRegistrationBestEffort(payload: { name: string; email: string; slug: string }) {
   try {
     const supabase = await createClient();
     const { data: settings } = await supabase.from("admin_settings").select("webhook_url").eq("id", true).single();
     const url = settings?.webhook_url;
     if (!url) return;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    }).catch(() => undefined);
-    clearTimeout(timeout);
+    const { data: sorteoRow } = await supabase
+      .from("sorteos")
+      .select("name, profiles(display_name)")
+      .eq("slug", payload.slug)
+      .single();
+    const educatorProfile = Array.isArray(sorteoRow?.profiles) ? sorteoRow.profiles[0] : sorteoRow?.profiles;
+
+    await sendCrmWebhook(url, {
+      name: payload.name,
+      email: payload.email,
+      sorteo_slug: payload.slug,
+      sorteo_name: sorteoRow?.name ?? null,
+      educador: educatorProfile?.display_name ?? null,
+      evento: "nuevo_registro",
+      // El resultado del sorteo todavía no se conoce a esta altura — llega
+      // en un segundo POST (evento "sorteo_resultado") cuando se sortea.
+      gano: null,
+      codigo: null,
+    });
   } catch {
     // Best-effort only — a CRM outage should never affect registration.
   }
@@ -87,11 +98,10 @@ export async function POST(request: Request) {
 
   const result = data as RegisterParticipantResult;
   if (!result.already_registered) {
-    void fireWebhookBestEffort({
+    void notifyRegistrationBestEffort({
       name: parsed.data.name,
       email: parsed.data.email,
-      sorteo_slug: slug,
-      evento: "nuevo_registro",
+      slug,
     });
   }
 

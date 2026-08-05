@@ -30,24 +30,28 @@ export const getCachedAdminStats = unstable_cache(
   async () => {
     const supabase = createAdminClient();
     const [
-      { data: recentParticipants },
+      { data: participants },
       { count: totalParticipants },
       { count: totalIssued },
       { count: totalRedeemed },
-      { data: participantsBySorteo },
+      { data: prizeCodes },
     ] = await Promise.all([
-      supabase.from("participants").select("created_at").order("created_at", { ascending: false }).limit(5000),
+      supabase
+        .from("participants")
+        .select("email, sorteo_id, educator_id, created_at, sorteos(name)")
+        .order("created_at", { ascending: false })
+        .limit(5000),
       supabase.from("participants").select("id", { count: "exact", head: true }),
       supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "issued"),
       supabase.from("prize_codes").select("id", { count: "exact", head: true }).eq("status", "redeemed"),
-      supabase.from("participants").select("sorteo_id, sorteos(name)").limit(5000),
+      supabase.from("prize_codes").select("status, educator_id"),
     ]);
     return {
-      recentParticipants: recentParticipants ?? [],
+      participants: participants ?? [],
       totalParticipants: totalParticipants ?? 0,
       totalIssued: totalIssued ?? 0,
       totalRedeemed: totalRedeemed ?? 0,
-      participantsBySorteo: participantsBySorteo ?? [],
+      prizeCodes: prizeCodes ?? [],
     };
   },
   ["admin-stats"],

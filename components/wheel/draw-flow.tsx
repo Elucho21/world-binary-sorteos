@@ -7,9 +7,10 @@ import { CountdownOverlay } from "@/components/wheel/countdown-overlay";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { ConfirmButton } from "@/components/dashboard/delete-button";
 import { createAudioContext, playTick, playWinChime, playNoWinnerSound, playCountdownBeep } from "@/lib/win-chime";
 import { MUSIC_TRACKS, playMusicLoop, stopMusic, type MusicTrackId } from "@/lib/music-tracks";
-import { drawWinners, type DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
+import { drawWinners, reassignWinner, type DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
 const COLORS = ["#2AA76D", "#F5B400", "#EF4444", "#8B5CF6", "#06B6D4", "#F97316", "#EC4899", "#22D3EE"];
 const SPIN_MS = 7200;
@@ -48,6 +49,7 @@ function makePracticeWinners(pool: { id: string; name: string }[], count: number
     name: p.name,
     code: `PRUEBA-${String(i + 1).padStart(4, "0")}`,
     tier: null,
+    raffleWinnerId: `practice-winner-${i}`,
   }));
 }
 
@@ -116,6 +118,7 @@ export function DrawFlow({
   const [musicTrack, setMusicTrack] = useState<MusicTrackId>("alegre");
   const [mode, setMode] = useState<DrawMode>("normal");
   const [practiceMode, setPracticeMode] = useState(false);
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const tickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,10 +290,59 @@ export function DrawFlow({
       const winnerIds = new Set(winnerEntries.map((w) => w.participantId));
       const decoys: RevealEntry[] = shuffled(drawPool.filter((p) => !winnerIds.has(p.id)))
         .slice(0, DECOY_COUNT)
-        .map((p) => ({ participantId: p.id, name: p.name, code: null, tier: null, isWinner: false }));
+        .map((p) => ({
+          participantId: p.id,
+          name: p.name,
+          code: null,
+          tier: null,
+          raffleWinnerId: "",
+          isWinner: false,
+        }));
       queue = [...decoys, ...winnerEntries];
     }
     spinNext(queue, drawPool);
+  }
+
+  async function handleReassign(entry: DrawnWinner) {
+    if (!entry.raffleWinnerId || spinning || reassigningId) return;
+    setError(null);
+    setReassigningId(entry.raffleWinnerId);
+
+    const result = await reassignWinner(sorteoId, entry.raffleWinnerId);
+    if (result.error || !result.winner || !result.eligiblePool) {
+      setError(result.error ?? "No se pudo reasignar el premio.");
+      setReassigningId(null);
+      return;
+    }
+    const { winner, eligiblePool } = result;
+
+    if (!audioCtxRef.current) audioCtxRef.current = createAudioContext();
+
+    setPool(eligiblePool);
+    const idx = eligiblePool.findIndex((p) => p.id === winner.participantId);
+    const segmentAngle = eligiblePool.length > 0 ? 360 / eligiblePool.length : 0;
+    const midAngle = idx >= 0 ? idx * segmentAngle + segmentAngle / 2 : 0;
+
+    setTransitionMs(SPIN_MS);
+    setRotation((prev) => nextRotation(prev, midAngle));
+    setSpinning(true);
+    startTicking();
+    startCalloutLoop(eligiblePool);
+
+    setTimeout(() => {
+      stopTicking();
+      stopCalloutLoop();
+      setLiveSegmentName(null);
+      setRevealed((r) => r.map((w) => (w.raffleWinnerId === entry.raffleWinnerId ? winner : w)));
+      setShowConfettiFor((c) => c + 1);
+      playWinChime(audioCtxRef.current);
+      flashCounterRef.current += 1;
+      setFlash({ n: flashCounterRef.current, isWinner: true });
+      setBanner({ name: winner.name, isWinner: true });
+      setSpinning(false);
+      setReassigningId(null);
+      setTimeout(() => setBanner(null), 1600);
+    }, SPIN_MS);
   }
 
   function resetAfterPractice() {
@@ -465,10 +517,15 @@ export function DrawFlow({
           <p className="mb-3 text-xs text-brand-muted">
             Los códigos quedan ocultos por defecto — si estás compartiendo pantalla, evitá revelarlos en vivo
             para que nadie los use antes que el ganador.
+            {done && !practiceMode &&
+              " Si un ganador no está presente en el evento, podés anularlo y sortear de nuevo esa posición entre el resto de los inscriptos."}
           </p>
           <div className="space-y-2">
             {revealed.map((w, i) => (
-              <div key={w.participantId} className="flex items-center justify-between border-b border-brand-border/60 py-2">
+              <div
+                key={w.raffleWinnerId || w.participantId}
+                className="flex flex-wrap items-center justify-between gap-2 border-b border-brand-border/60 py-2"
+              >
                 <span className="flex items-center gap-2">
                   #{i + 1} — {w.name}
                   {w.tier && (
@@ -477,27 +534,39 @@ export function DrawFlow({
                     </span>
                   )}
                 </span>
-                {w.code ? (
-                  visibleCodes[w.participantId] ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleCode(w.participantId)}
-                      className="font-mono text-sm text-brand-accent hover:underline"
-                    >
-                      {w.code}
-                    </button>
+                <div className="flex items-center gap-3">
+                  {w.code ? (
+                    visibleCodes[w.participantId] ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleCode(w.participantId)}
+                        className="font-mono text-sm text-brand-accent hover:underline"
+                      >
+                        {w.code}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => toggleCode(w.participantId)}
+                        className="text-xs text-brand-muted underline hover:text-brand-text"
+                      >
+                        Ver código
+                      </button>
+                    )
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => toggleCode(w.participantId)}
-                      className="text-xs text-brand-muted underline hover:text-brand-text"
+                    <span className="text-brand-muted">—</span>
+                  )}
+                  {done && !practiceMode && w.raffleWinnerId && (
+                    <ConfirmButton
+                      action={() => handleReassign(w)}
+                      confirmText={`¿Anular a ${w.name} y sortear de nuevo esa posición entre los inscriptos restantes? Esta acción no se puede deshacer.`}
+                      variant="ghost"
+                      disabled={spinning || reassigningId !== null}
                     >
-                      Ver código
-                    </button>
-                  )
-                ) : (
-                  <span className="text-brand-muted">—</span>
-                )}
+                      {reassigningId === w.raffleWinnerId ? "Sorteando..." : "Anular y sortear de nuevo"}
+                    </ConfirmButton>
+                  )}
+                </div>
               </div>
             ))}
           </div>

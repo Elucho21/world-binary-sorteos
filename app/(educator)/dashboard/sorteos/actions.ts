@@ -6,6 +6,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { requireApprovedEducator, effectiveEducatorId } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { sorteoSchema } from "@/lib/validation";
+import { sendCrmWebhook } from "@/lib/webhook";
 
 // Seeded shuffle so a draw can be reproduced and checked independently (v1.7
 // "sorteo verificable"): given the revealed seed and the same participant
@@ -184,7 +185,13 @@ export async function deleteSorteo(sorteoId: string) {
 
 // --- the draw ---
 
-export type DrawnWinner = { participantId: string; name: string; code: string | null; tier: string | null };
+export type DrawnWinner = {
+  participantId: string;
+  name: string;
+  code: string | null;
+  tier: string | null;
+  raffleWinnerId: string;
+};
 export type DrawResult = { error?: string; winners?: DrawnWinner[] };
 
 export async function drawWinners(sorteoId: string): Promise<DrawResult> {
@@ -199,7 +206,7 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
   // shuffle below runs over, and what draw_participants_hash commits to.
   const { data: participants } = await supabase
     .from("participants")
-    .select("id, name")
+    .select("id, name, email")
     .eq("sorteo_id", sorteoId)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
@@ -247,14 +254,24 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
 
     if (claimError || !claimedCode) continue;
 
-    await supabase.from("raffle_winners").insert({
-      sorteo_id: sorteoId,
-      participant_id: participant.id,
-      prize_code_id: code.id,
-      position: i + 1,
-    });
+    const { data: winnerRow } = await supabase
+      .from("raffle_winners")
+      .insert({
+        sorteo_id: sorteoId,
+        participant_id: participant.id,
+        prize_code_id: code.id,
+        position: i + 1,
+      })
+      .select("id")
+      .single();
 
-    results.push({ participantId: participant.id, name: participant.name, code: claimedCode.code, tier: code.tier });
+    results.push({
+      participantId: participant.id,
+      name: participant.name,
+      code: claimedCode.code,
+      tier: code.tier,
+      raffleWinnerId: winnerRow?.id ?? "",
+    });
   }
 
   if (results.length === 0) {
@@ -271,8 +288,133 @@ export async function drawWinners(sorteoId: string): Promise<DrawResult> {
     })
     .eq("id", sorteoId);
 
+  await notifyDrawResultsBestEffort(supabase, sorteo, participants, results);
+
   revalidatePath(`/dashboard/sorteos/${sorteoId}`);
   revalidatePath("/dashboard");
 
   return { winners: results };
+}
+
+// Sends one webhook POST per participant with the final result (won or not,
+// and the prize code if any) — this is the single point in the app where
+// that information becomes known, so it's the only place we can report it.
+async function notifyDrawResultsBestEffort(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sorteo: { slug: string; name: string; educator_id: string },
+  participants: { id: string; name: string; email: string }[],
+  results: DrawnWinner[]
+) {
+  try {
+    const { data: settings } = await supabase.from("admin_settings").select("webhook_url").eq("id", true).single();
+    const url = settings?.webhook_url;
+    if (!url) return;
+
+    const { data: educatorProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", sorteo.educator_id)
+      .single();
+
+    const winnerByParticipant = new Map(results.map((r) => [r.participantId, r]));
+
+    await Promise.allSettled(
+      participants.map((participant) => {
+        const winner = winnerByParticipant.get(participant.id);
+        return sendCrmWebhook(url, {
+          name: participant.name,
+          email: participant.email,
+          sorteo_slug: sorteo.slug,
+          sorteo_name: sorteo.name,
+          educador: educatorProfile?.display_name ?? null,
+          evento: "sorteo_resultado",
+          gano: Boolean(winner),
+          codigo: winner?.code ?? null,
+        });
+      })
+    );
+  } catch {
+    // Best-effort only — a CRM outage should never affect the draw itself.
+  }
+}
+
+// --- manual re-draw when a winner isn't present ---
+
+export type ReassignResult = {
+  error?: string;
+  winner?: DrawnWinner;
+  eligiblePool?: { id: string; name: string }[];
+};
+
+// Lets the educator void a specific winner right there at the live event
+// (no-show) and immediately redraw that same position from everyone else
+// who wasn't already a winner. Can be used more than once per position if
+// the replacement also doesn't show — original_participant_id always keeps
+// the very first person drawn, reassigned_at just tracks "most recent".
+export async function reassignWinner(sorteoId: string, raffleWinnerId: string): Promise<ReassignResult> {
+  const profile = await requireApprovedEducator();
+  const supabase = await createClient();
+
+  const { data: winnerRow } = await supabase
+    .from("raffle_winners")
+    .select("id, participant_id, prize_code_id, original_participant_id")
+    .eq("id", raffleWinnerId)
+    .eq("sorteo_id", sorteoId)
+    .single();
+  if (!winnerRow) return { error: "No se encontró ese ganador." };
+
+  const [{ data: participants }, { data: currentWinners }] = await Promise.all([
+    supabase.from("participants").select("id, name").eq("sorteo_id", sorteoId),
+    supabase.from("raffle_winners").select("participant_id").eq("sorteo_id", sorteoId),
+  ]);
+
+  const winnerIds = new Set((currentWinners ?? []).map((w) => w.participant_id));
+  const eligible = (participants ?? []).filter((p) => !winnerIds.has(p.id));
+  if (eligible.length === 0) {
+    return { error: "No quedan más inscriptos disponibles para sortear de nuevo." };
+  }
+
+  const newParticipant = eligible[Math.floor(Math.random() * eligible.length)];
+  const now = new Date().toISOString();
+
+  const { error: updateError } = await supabase
+    .from("raffle_winners")
+    .update({
+      participant_id: newParticipant.id,
+      original_participant_id: winnerRow.original_participant_id ?? winnerRow.participant_id,
+      reassigned_at: now,
+    })
+    .eq("id", winnerRow.id);
+  if (updateError) return { error: "No se pudo reasignar el premio." };
+
+  let code: string | null = null;
+  let tier: string | null = null;
+  if (winnerRow.prize_code_id) {
+    const { data: updatedCode } = await supabase
+      .from("prize_codes")
+      .update({ issued_to: newParticipant.id, issued_at: now })
+      .eq("id", winnerRow.prize_code_id)
+      .select("code, tier")
+      .single();
+    code = updatedCode?.code ?? null;
+    tier = updatedCode?.tier ?? null;
+  }
+
+  await supabase.from("audit_log").insert({
+    actor_id: profile.id,
+    action: "raffle_winner_manually_reassigned",
+    target_id: sorteoId,
+    metadata: {
+      raffle_winner_id: winnerRow.id,
+      old_participant_id: winnerRow.participant_id,
+      new_participant_id: newParticipant.id,
+    },
+  });
+
+  revalidatePath(`/dashboard/sorteos/${sorteoId}/winners`);
+
+  return {
+    winner: { participantId: newParticipant.id, name: newParticipant.name, code, tier, raffleWinnerId: winnerRow.id },
+    eligiblePool: eligible,
+  };
 }

@@ -7,11 +7,13 @@ export function ConfirmButton({
   confirmText,
   children,
   variant = "danger",
+  disabled = false,
 }: {
   action: () => Promise<void> | void;
   confirmText: string;
   children: React.ReactNode;
   variant?: "danger" | "secondary" | "ghost";
+  disabled?: boolean;
 }) {
   return (
     <form
@@ -21,7 +23,7 @@ export function ConfirmButton({
         }
       }}
     >
-      <Button type="submit" variant={variant} size="sm">
+      <Button type="submit" variant={variant} size="sm" disabled={disabled}>
         {children}
       </Button>
     </form>

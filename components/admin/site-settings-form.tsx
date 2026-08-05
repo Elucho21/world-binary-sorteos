@@ -29,8 +29,9 @@ export function SiteSettingsForm({ settings }: { settings: AdminSettings }) {
           defaultValue={settings.webhook_url ?? ""}
         />
         <p className="mt-1 text-xs text-brand-muted">
-          Si lo cargás, por cada giro nuevo (con premio o sin premio) le mandamos un POST con
-          nombre, email, sorteo, educador y código ganado.
+          Si lo cargás, mandamos dos POST a esta URL con nombre, email, sorteo y educador: uno
+          apenas alguien se registra, y otro cuando se sortea el sorteo, con si ganó o no y el
+          código del premio — útil para conectar con GoHighLevel u otro CRM.
         </p>
       </div>
       {state?.error && <p className="text-sm text-brand-danger">{state.error}</p>}

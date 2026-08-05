@@ -84,7 +84,17 @@ export function Wheel({
             const start = i * sliceAngle;
             const end = start + sliceAngle;
             const mid = start + sliceAngle / 2;
-            const labelPos = polarToCartesian(cx, cy, r * 0.62, mid);
+
+            // Orient the label along the wedge's own radius (center -> rim) instead of
+            // tangentially, so labels don't overlap in concentric rings on wide wheels.
+            const outwardAngle = mid - 90;
+            const normalized = ((outwardAngle % 360) + 360) % 360;
+            const flip = normalized > 90 && normalized < 270;
+            const rotation = flip ? outwardAngle + 180 : outwardAngle;
+            const labelPos = flip
+              ? polarToCartesian(cx, cy, r * 0.88, mid)
+              : polarToCartesian(cx, cy, r * 0.22, mid);
+
             return (
               <g key={segment.id}>
                 <path d={describeSlice(cx, cy, r, start, end)} fill={segment.color} stroke="var(--brand-bg)" strokeWidth={1} />
@@ -94,9 +104,9 @@ export function Wheel({
                   fill="#fff"
                   fontSize={size * 0.032}
                   fontWeight={600}
-                  textAnchor="middle"
+                  textAnchor={flip ? "end" : "start"}
                   dominantBaseline="middle"
-                  transform={`rotate(${mid}, ${labelPos.x}, ${labelPos.y})`}
+                  transform={`rotate(${rotation}, ${labelPos.x}, ${labelPos.y})`}
                 >
                   {segment.label.length > 16 ? `${segment.label.slice(0, 15)}…` : segment.label}
                 </text>

@@ -9,6 +9,7 @@ import { DownloadReportButton } from "@/components/dashboard/download-report-but
 import type { DrawnWinner } from "@/app/(educator)/dashboard/sorteos/actions";
 
 interface WinnerRow {
+  id: string;
   participant_id: string;
   position: number;
   participants: { name: string } | { name: string }[] | null;
@@ -37,7 +38,7 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
   if (sorteo.drawn_at) {
     const { data: winnersData } = await supabase
       .from("raffle_winners")
-      .select("participant_id, position, participants(name), prize_codes(code, tier)")
+      .select("id, participant_id, position, participants(name), prize_codes(code, tier)")
       .eq("sorteo_id", id)
       .order("position", { ascending: true });
 
@@ -49,6 +50,7 @@ export default async function SorteoWinnersPage({ params }: { params: Promise<{ 
         name: participant?.name ?? "?",
         code: code?.code ?? null,
         tier: code?.tier ?? null,
+        raffleWinnerId: w.id,
       };
     });
   }

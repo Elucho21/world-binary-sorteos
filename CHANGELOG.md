@@ -201,8 +201,35 @@ todos los inscriptos.
   más que la cantidad de ganadores.
 - Migración `0005_v1_7_improvements.sql`.
 
+## v1.8 — Anular ganador en vivo, ruleta legible y panel de admin más prolijo
+
+**UX / flujo del sorteo en vivo**
+- El educador puede anular a un ganador que no está presente en el evento y
+  sortear de nuevo esa posición al instante, entre el resto de los
+  inscriptos elegibles (botón "Anular y sortear de nuevo" en la lista de
+  ganadores, con confirmación). Reutiliza la mini-animación de la ruleta y
+  queda registrado en `audit_log`.
+- Fix: los nombres en la ruleta ahora se leen en forma radial (del centro
+  hacia el borde, siguiendo el "cono" de cada porción) en vez de aparecer
+  superpuestos en anillos concéntricos — se nota sobre todo con muchos
+  inscriptos.
+
+**Admin**
+- Tabla de sorteos de `/admin/sorteos` con filtro y borrado individual/masivo.
+- `/admin/stats` con filtro por educador (registros únicos vs. repetidos,
+  códigos emitidos/canjeados, top sorteos, todo recalculado según el
+  educador elegido).
+
+**Backend**
+- El webhook al CRM ahora también dispara al terminar un sorteo (evento
+  `sorteo_resultado`, incluye quién ganó y con qué código), no solo en el
+  registro inicial.
+
 ## Pendiente / backlog
 
+- Mecánica de sorteo alternativa (máquina tipo casino o dado de "infinitos
+  lados") como opción visual además de la ruleta — evaluado y pospuesto en
+  v1.8 por alcance/riesgo, a definir en una sesión aparte.
 - Notificaciones por email (stock bajo de códigos, alta de educador
   nuevo).
 - Página pública de "educadores destacados".

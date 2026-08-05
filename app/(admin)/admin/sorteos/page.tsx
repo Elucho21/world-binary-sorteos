@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SorteosTable, type SorteoTableRow } from "@/components/admin/sorteos-table";
 import type { SorteoStatus } from "@/types/database.types";
 
 interface SorteoRow {
@@ -16,13 +15,6 @@ interface SorteoRow {
   created_at: string;
   profiles: { display_name: string | null } | { display_name: string | null }[] | null;
 }
-
-const statusTone: Record<SorteoStatus, "neutral" | "success" | "warning" | "danger"> = {
-  draft: "neutral",
-  active: "success",
-  paused: "warning",
-  ended: "danger",
-};
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -63,6 +55,22 @@ export default async function AdminSorteosPage() {
     codeCounts.set(code.sorteo_id, current);
   }
 
+  const rows: SorteoTableRow[] = sorteos.map((sorteo) => {
+    const profile = Array.isArray(sorteo.profiles) ? sorteo.profiles[0] : sorteo.profiles;
+    const codes = codeCounts.get(sorteo.id) ?? { available: 0, issued: 0 };
+    return {
+      id: sorteo.id,
+      name: sorteo.name,
+      slug: sorteo.slug,
+      status: sorteo.status,
+      educador: profile?.display_name ?? "—",
+      registrados: participantCounts.get(sorteo.id) ?? 0,
+      premiosLabel:
+        codes.available === 0 && codes.issued === 0 ? "—" : `${codes.available} disp. / ${codes.issued} emit.`,
+      horarioLabel: `${formatDate(sorteo.starts_at)} — ${formatDate(sorteo.ends_at)}`,
+    };
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,56 +83,7 @@ export default async function AdminSorteosPage() {
         </Link>
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[800px] text-left text-sm">
-          <thead className="border-b border-brand-border text-brand-muted">
-            <tr>
-              <th className="px-4 py-3">Sorteo</th>
-              <th className="px-4 py-3">Educador</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Registrados</th>
-              <th className="px-4 py-3">Premios</th>
-              <th className="px-4 py-3">Horario</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorteos.map((sorteo) => {
-              const profile = Array.isArray(sorteo.profiles) ? sorteo.profiles[0] : sorteo.profiles;
-              const codes = codeCounts.get(sorteo.id) ?? { available: 0, issued: 0 };
-              return (
-                <tr key={sorteo.id} className="border-b border-brand-border/60 hover:bg-brand-surface-raised">
-                  <td className="px-4 py-3">
-                    <Link href={`/dashboard/sorteos/${sorteo.id}`} className="text-brand-primary hover:underline">
-                      {sorteo.name}
-                    </Link>
-                    <p className="font-mono text-xs text-brand-muted">/s/{sorteo.slug}</p>
-                  </td>
-                  <td className="px-4 py-3">{profile?.display_name ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone[sorteo.status]}>{sorteo.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3">{participantCounts.get(sorteo.id) ?? 0}</td>
-                  <td className="px-4 py-3">
-                    {codes.available === 0 && codes.issued === 0
-                      ? "—"
-                      : `${codes.available} disp. / ${codes.issued} emit.`}
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    {formatDate(sorteo.starts_at)} — {formatDate(sorteo.ends_at)}
-                  </td>
-                </tr>
-              );
-            })}
-            {sorteos.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-brand-muted">
-                  Todavía no hay sorteos.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+      <SorteosTable sorteos={rows} />
     </div>
   );
 }
